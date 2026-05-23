@@ -18,7 +18,7 @@ export default function SignUpPage() {
       <div className="flex-1 grid place-items-center px-6 py-10">
         <div>
           <div className="mono text-[10px] tracking-widest opacity-60 mb-3 text-center">
-            JOIN PARIS · ONE PHONE NUMBER, ONE PRESENCE
+            JOIN PARIS · ONE EMAIL, ONE PRESENCE
           </div>
           <SignUp />
         </div>

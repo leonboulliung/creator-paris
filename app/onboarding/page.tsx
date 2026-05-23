@@ -121,7 +121,7 @@ function OnboardingInner() {
 
       <div className="flex-1 px-6 py-10 max-w-xl w-full mx-auto">
         <div className="mono text-[10px] tracking-widest opacity-60">
-          ALMOST IN. {user.primaryPhoneNumber?.phoneNumber || "PHONE VERIFIED"}
+          ALMOST IN. {user.primaryEmailAddress?.emailAddress?.toUpperCase() || "EMAIL VERIFIED"}
         </div>
         <h1 className="editorial font-black text-[44px] sm:text-[64px] mt-3 leading-[0.92]">
           Show your face.<br />

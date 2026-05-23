@@ -13,8 +13,12 @@ export async function ensureProfile(userId: string) {
   const cc = await clerkClient();
   const cu = await cc.users.getUser(userId);
 
+  // Identifier comes from Clerk — we use email now (was phone).
+  // The Supabase column is still called `phone` from the original schema;
+  // we keep it as a generic identifier string. Cheap migration debt.
   const phone =
-    cu.phoneNumbers?.find((p) => p.id === cu.primaryPhoneNumberId)?.phoneNumber ||
+    cu.emailAddresses?.find((e) => e.id === cu.primaryEmailAddressId)?.emailAddress ||
+    cu.emailAddresses?.[0]?.emailAddress ||
     cu.phoneNumbers?.[0]?.phoneNumber ||
     null;
   const avatar = cu.imageUrl || null;

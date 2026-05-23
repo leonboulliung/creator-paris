@@ -57,7 +57,7 @@ export default function CarnetPage() {
   const displayName =
     [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
     user.username ||
-    user.primaryPhoneNumber?.phoneNumber ||
+    user.primaryEmailAddress?.emailAddress?.split("@")[0] ||
     `Paris-${user.id.slice(-4)}`;
 
   return (
