@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { parisHour, parisNow, formatParisClock } from "@/lib/time";
 import { getUser, subscribe } from "@/lib/storage";
 import { TOD_LABEL, timeOfDayFromHour } from "@/lib/vibe";
@@ -79,6 +80,18 @@ export function Header({
               )}
             </Link>
           )}
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button className="ml-1 mono text-[10px] tracking-widest px-3 py-1.5 border border-ink hover:bg-ink hover:text-paper">
+                SIGN IN
+              </button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <div className="ml-1 [&_.cl-userButtonAvatarBox]:!w-9 [&_.cl-userButtonAvatarBox]:!h-9 [&_.cl-userButtonAvatarBox]:!rounded-none [&_.cl-userButtonAvatarBox]:!border [&_.cl-userButtonAvatarBox]:!border-ink">
+              <UserButton afterSignOutUrl="/" />
+            </div>
+          </SignedIn>
         </div>
       </div>
 
