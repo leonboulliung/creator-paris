@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { SignInButton, useUser } from "@clerk/nextjs";
+import { SignUpButton, useUser } from "@clerk/nextjs";
 import { Header } from "@/components/Header";
 import { VibeBackground } from "@/components/VibeBackground";
 import { ParisMap } from "@/components/ParisMap";
@@ -286,11 +286,11 @@ export default function PostPage() {
             </>
           )}
           {!user && !mine && !full && (
-            <SignInButton mode="modal" forceRedirectUrl={`/post/${card.id}`}>
+            <SignUpButton mode="modal" forceRedirectUrl={`/post/${card.id}`}>
               <button className="btn">
-                {card.permission === "public" ? "SIGN IN TO JOIN →" : "SIGN IN TO REQUEST →"}
+                {card.permission === "public" ? "SIGN UP TO JOIN →" : "SIGN UP TO REQUEST →"}
               </button>
-            </SignInButton>
+            </SignUpButton>
           )}
           <button onClick={onShare} className="btn ghost ml-auto" disabled={sharing}>
             {sharing ? "RENDERING…" : "↗ SHARE AS IMAGE"}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignUpButton } from "@clerk/nextjs";
 import { Header } from "@/components/Header";
 import { Feed } from "@/components/Feed";
 import { CardCreate } from "@/components/CardCreate";
@@ -31,15 +31,15 @@ export default function HomePage() {
       </SignedIn>
 
       <SignedOut>
-        <SignInButton mode="modal" forceRedirectUrl="/">
+        <SignUpButton mode="modal" forceRedirectUrl="/">
           <button
             className="fixed bottom-5 right-5 z-30 bg-ink text-paper w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 mono text-[12px] tracking-widest shadow-xl hover:scale-[1.02] transition"
-            aria-label="Sign in to post"
+            aria-label="Sign up to post"
           >
             <span className="sm:hidden text-2xl leading-none">+</span>
             <span className="hidden sm:inline">＋ ONE THING</span>
           </button>
-        </SignInButton>
+        </SignUpButton>
       </SignedOut>
 
       {composing && <CardCreate onClose={() => setComposing(false)} />}
