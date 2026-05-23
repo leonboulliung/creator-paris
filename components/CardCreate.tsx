@@ -2,25 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  archiveActiveFor,
-  getActiveCardByOwner,
-  getUser,
-  newId,
-  upsertCard,
-} from "@/lib/storage";
 import { searchQuartiers, Quartier } from "@/lib/quartiers";
 import { computeVibe } from "@/lib/vibe";
-import type { Card, Permission } from "@/lib/types";
+import type { Permission } from "@/lib/types";
 import { ParisMap } from "./ParisMap";
 
 export function CardCreate({ onClose }: { onClose: () => void }) {
   const router = useRouter();
-  const user = useMemo(() => (typeof window === "undefined" ? null : getUser()), []);
-  const existing = useMemo(
-    () => (typeof window === "undefined" || !user ? null : getActiveCardByOwner(user.email)),
-    [user],
-  );
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -31,7 +19,8 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
   const [picked, setPicked] = useState<Quartier | null>(null);
   const [latlng, setLatlng] = useState<{ lat: number; lng: number } | null>(null);
   const [suggestions, setSuggestions] = useState<Quartier[]>([]);
-  const [confirming, setConfirming] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string>("");
 
   useEffect(() => {
     setSuggestions(searchQuartiers(query, 8));
@@ -51,43 +40,43 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
     setSuggestions([]);
   }
 
-  function submit() {
-    if (!user) return;
+  async function submit() {
     if (!title.trim() || !latlng) return;
-    if (existing) {
-      if (!confirming) {
-        setConfirming(true);
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/cards", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          location: {
+            lat: latlng.lat,
+            lng: latlng.lng,
+            label: picked?.name || query.trim() || "Paris",
+          },
+          spots,
+          permission,
+          durationDays,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json?.error || "Failed to post");
         return;
       }
-      archiveActiveFor(user.email);
+      onClose();
+      router.push(`/post/${json.id}`);
+      router.refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSubmitting(false);
     }
-    const id = newId();
-    const now = Date.now();
-    const card: Card = {
-      id,
-      ownerEmail: user.email,
-      title: title.trim(),
-      description: description.trim(),
-      location: {
-        lat: latlng.lat,
-        lng: latlng.lng,
-        label: picked?.name || query.trim() || "Paris",
-      },
-      spots: Math.max(1, Math.min(99, Math.floor(spots))),
-      permission,
-      joiners: [],
-      requests: [],
-      createdAt: now,
-      expiresAt: now + durationDays * 24 * 60 * 60 * 1000,
-      durationDays,
-      archived: false,
-    };
-    upsertCard(card);
-    onClose();
-    router.push(`/post/${id}`);
   }
 
-  const canSubmit = title.trim() && latlng;
+  const canSubmit = !!title.trim() && !!latlng && !submitting;
 
   return (
     <div className="fixed inset-0 z-40 bg-paper flex flex-col">
@@ -99,7 +88,6 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* vibe preview */}
         <div
           className="relative h-40 sm:h-56 noise"
           style={{ backgroundImage: vibePreview.cssBackground }}
@@ -175,9 +163,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
             </div>
 
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">
-                LIVE FOR
-              </label>
+              <label className="mono text-[10px] tracking-widest opacity-70">LIVE FOR</label>
               <div className="mt-1 flex">
                 {([1, 3, 7] as const).map((d, i) => (
                   <button
@@ -253,21 +239,26 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {existing && (
-          <div className="px-4 sm:px-6 py-3 border-t border-ink mono text-[11px] bg-ink text-paper">
-            HEADS UP — POSTING WILL ARCHIVE YOUR CURRENT CARD INTO YOUR CARNET.
+        <div className="px-4 sm:px-6 py-3 border-t border-ink mono text-[11px] bg-ink text-paper">
+          ONE LIVE CARD PER PERSON — POSTING AUTO-ARCHIVES YOUR CURRENT ONE (IF ANY) INTO YOUR CARNET.
+        </div>
+        {error && (
+          <div className="px-4 sm:px-6 py-3 mono text-[11px] text-red-700">
+            {error.toUpperCase()}
           </div>
         )}
       </div>
 
       <div className="border-t border-ink px-4 sm:px-6 py-3 flex items-center justify-end gap-2">
-        <button onClick={onClose} className="btn ghost">Cancel</button>
+        <button onClick={onClose} className="btn ghost" disabled={submitting}>
+          Cancel
+        </button>
         <button
           onClick={submit}
           disabled={!canSubmit}
           className={`btn ${!canSubmit ? "opacity-40" : ""}`}
         >
-          {confirming && existing ? "Confirm — archive previous & post" : "Post →"}
+          {submitting ? "Posting…" : "Post →"}
         </button>
       </div>
     </div>

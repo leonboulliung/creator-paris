@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import type { Card } from "@/lib/types";
 import { expiresIn, parisHourOf, timeAgo } from "@/lib/time";
 import { computeVibe, ACTIVITY_LABEL } from "@/lib/vibe";
-import { getUser } from "@/lib/storage";
 
 export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
   const [, force] = useState(0);
@@ -19,8 +19,8 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
     label: card.location.label,
     hour: parisHourOf(card.createdAt),
   });
-  const me = typeof window === "undefined" ? null : getUser();
-  const mine = me?.email === card.ownerEmail;
+  const { user } = useUser();
+  const mine = user?.id === card.ownerId;
 
   return (
     <Link
@@ -71,7 +71,7 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
               )}
             </div>
             <div className="opacity-70 truncate max-w-[140px]">
-              {card.ownerEmail.split("@")[0]}
+              {card.owner.displayName}
             </div>
           </div>
         </div>

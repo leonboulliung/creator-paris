@@ -1,22 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getActiveCards, subscribe } from "@/lib/storage";
+import { useCallback, useEffect, useState } from "react";
+import { fetchActiveCards } from "@/lib/db";
+import { useRealtimeCards } from "@/lib/realtime";
+import type { Card } from "@/lib/types";
 import { expiresIn, timeAgo } from "@/lib/time";
 
 export function Ticker() {
+  const [cards, setCards] = useState<Card[]>([]);
   const [tick, setTick] = useState(0);
 
-  useEffect(() => {
-    const unsub = subscribe(() => setTick((t) => t + 1));
-    const id = window.setInterval(() => setTick((t) => t + 1), 15_000);
-    return () => {
-      unsub();
-      window.clearInterval(id);
-    };
+  const refresh = useCallback(() => {
+    fetchActiveCards()
+      .then(setCards)
+      .catch(() => {});
+    setTick((t) => t + 1);
   }, []);
 
-  const cards = typeof window === "undefined" ? [] : getActiveCards();
+  useEffect(() => {
+    refresh();
+    const id = window.setInterval(() => setTick((t) => t + 1), 15_000);
+    return () => window.clearInterval(id);
+  }, [refresh]);
+
+  useRealtimeCards(refresh);
+
   const items =
     cards.length === 0
       ? [
@@ -30,12 +38,15 @@ export function Ticker() {
             `${c.title.toUpperCase()}  ·  ${c.location.label.toUpperCase()}  ·  ${timeAgo(c.createdAt)}  ·  ${expiresIn(c.expiresAt).toUpperCase()}`,
         );
 
-  // duplicate items for seamless loop
   const stream = [...items, ...items];
 
   return (
     <div className="relative w-full overflow-hidden border-y border-ink bg-ink text-paper" aria-hidden>
-      <div className="flex whitespace-nowrap animate-ticker mono text-[11px] tracking-widest py-1.5" style={{ width: "200%" }} key={tick}>
+      <div
+        className="flex whitespace-nowrap animate-ticker mono text-[11px] tracking-widest py-1.5"
+        style={{ width: "200%" }}
+        key={tick}
+      >
         {stream.map((s, i) => (
           <span key={i} className="px-6">
             {s}

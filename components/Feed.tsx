@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getActiveCards, subscribe } from "@/lib/storage";
+import { fetchActiveCards } from "@/lib/db";
+import { useRealtimeCards } from "@/lib/realtime";
 import type { Card } from "@/lib/types";
 import { CardItem } from "./CardItem";
 import { ParisMap } from "./ParisMap";
@@ -14,6 +15,7 @@ export function Feed({ view }: { view: "feed" | "map" }) {
   const [cards, setCards] = useState<Card[]>([]);
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
   const [clock, setClock] = useState("--:--");
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const tick = () => {
@@ -27,35 +29,43 @@ export function Feed({ view }: { view: "feed" | "map" }) {
 
   const tod = timeOfDayFromHour(parisHour());
 
+  const refresh = useCallback(() => {
+    fetchActiveCards()
+      .then((next) => {
+        setCards((prev) => {
+          const prevIds = new Set(prev.map((c) => c.id));
+          const newFresh = next.filter((c) => !prevIds.has(c.id)).map((c) => c.id);
+          if (loaded && newFresh.length > 0) {
+            setFreshIds((f) => {
+              const nx = new Set(f);
+              newFresh.forEach((id) => nx.add(id));
+              return nx;
+            });
+            newFresh.forEach((id) => {
+              window.setTimeout(() => {
+                setFreshIds((f) => {
+                  const nx = new Set(f);
+                  nx.delete(id);
+                  return nx;
+                });
+              }, 10_000);
+            });
+          }
+          return next;
+        });
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [loaded]);
+
   useEffect(() => {
-    const refresh = () => {
-      const next = getActiveCards();
-      setCards((prev) => {
-        const prevIds = new Set(prev.map((c) => c.id));
-        const newFresh = next.filter((c) => !prevIds.has(c.id)).map((c) => c.id);
-        if (newFresh.length > 0) {
-          setFreshIds((f) => {
-            const nx = new Set(f);
-            newFresh.forEach((id) => nx.add(id));
-            return nx;
-          });
-          newFresh.forEach((id) => {
-            window.setTimeout(() => {
-              setFreshIds((f) => {
-                const nx = new Set(f);
-                nx.delete(id);
-                return nx;
-              });
-            }, 10_000);
-          });
-        }
-        return next;
-      });
-    };
     refresh();
-    const u = subscribe(refresh);
-    return () => u();
-  }, []);
+    // periodic re-fetch as a safety net (also moves cards out as they expire)
+    const id = window.setInterval(refresh, 60_000);
+    return () => window.clearInterval(id);
+  }, [refresh]);
+
+  useRealtimeCards(refresh);
 
   if (view === "map") {
     return (
@@ -79,7 +89,7 @@ export function Feed({ view }: { view: "feed" | "map" }) {
 
   return (
     <div className="bg-paper">
-      {cards.length === 0 && (
+      {loaded && cards.length === 0 && (
         <div className="px-4 sm:px-6 py-14 border-b border-ink text-center">
           <div className="editorial font-black text-[34px] sm:text-[44px]">
             The city is quiet.

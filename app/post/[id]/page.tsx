@@ -1,27 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { SignInButton, useUser } from "@clerk/nextjs";
 import { Header } from "@/components/Header";
 import { VibeBackground } from "@/components/VibeBackground";
 import { ParisMap } from "@/components/ParisMap";
-import { EmailGate } from "@/components/EmailGate";
-import {
-  acceptRequest,
-  bindCrossTab,
-  deleteCard,
-  declineRequest,
-  ensureMigrated,
-  getCardById,
-  getUser,
-  joinCard,
-  removeJoiner,
-  setJoinerRole,
-  subscribe,
-  sweepExpired,
-  upsertCard,
-} from "@/lib/storage";
+import { fetchCardById } from "@/lib/db";
+import { useRealtimeCards } from "@/lib/realtime";
 import type { Card } from "@/lib/types";
 import { expiresIn, parisHourOf, timeAgo } from "@/lib/time";
 import { ACTIVITY_LABEL, computeVibe } from "@/lib/vibe";
@@ -32,29 +19,34 @@ export default function PostPage() {
   const router = useRouter();
   const id = params.id;
   const [card, setCard] = useState<Card | null>(null);
-  const [ready, setReady] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<Card | null>(null);
-  const [gating, setGating] = useState(false);
-  const [, force] = useState(0);
+  const [draft, setDraft] = useState<{
+    title: string;
+    description: string;
+    spots: number;
+    permission: "public" | "request";
+  } | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    ensureMigrated();
-    bindCrossTab();
-    sweepExpired();
-    const refresh = () => setCard(getCardById(id) || null);
-    refresh();
-    const u = subscribe(refresh);
-    setReady(true);
-    return () => u();
+  const { user } = useUser();
+
+  const refresh = useCallback(() => {
+    fetchCardById(id)
+      .then((c) => {
+        setCard(c);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
   }, [id]);
 
-  const user = typeof window === "undefined" ? null : getUser();
-  const mine = card && user && card.ownerEmail === user.email;
-  const ownerAvatar = useMemo(() => (mine && user ? user.avatar : ""), [mine, user]);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+  useRealtimeCards(refresh);
 
-  if (!ready) return <div className="min-h-screen bg-paper" />;
+  if (!loaded) return <div className="min-h-screen bg-paper" />;
   if (!card) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -77,39 +69,103 @@ export default function PostPage() {
     label: card.location.label,
     hour: parisHourOf(card.createdAt),
   });
-  const joined = user ? card.joiners.includes(user.email) : false;
-  const requested = user ? card.requests.some((r) => r.email === user.email) : false;
+  const mine = !!user && user.id === card.ownerId;
+  const joined = !!user && card.joiners.some((j) => j.userId === user.id);
+  const requested = !!user && card.requests.some((r) => r.userId === user.id);
   const full = card.joiners.length >= card.spots;
 
   async function onShare() {
     if (!card) return;
+    setSharing(true);
     try {
-      setSharing(true);
-      // get the avatar of the owner — local storage only has the current user; if mine, use that
-      const av =
-        user && user.email === card.ownerEmail ? user.avatar : ownerAvatar || undefined;
-      await shareCard(card, av);
+      await shareCard(card, card.owner.avatarUrl || undefined);
     } finally {
       setSharing(false);
     }
   }
 
+  async function doJoin() {
+    if (!card) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/cards/${card.id}/join`, { method: "POST" });
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function doLeave() {
+    if (!card) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/cards/${card.id}/join`, { method: "DELETE" });
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function doAccept(uid: string) {
+    if (!card) return;
+    await fetch(`/api/cards/${card.id}/requests/${uid}`, { method: "POST" });
+    refresh();
+  }
+
+  async function doDecline(uid: string) {
+    if (!card) return;
+    await fetch(`/api/cards/${card.id}/requests/${uid}`, { method: "DELETE" });
+    refresh();
+  }
+
+  async function doRemoveJoiner(uid: string) {
+    if (!card) return;
+    if (!confirm("Remove this joiner from the crew?")) return;
+    await fetch(`/api/cards/${card.id}/joiners/${uid}`, { method: "DELETE" });
+    refresh();
+  }
+
+  async function doSetRole(uid: string, role: string) {
+    if (!card) return;
+    await fetch(`/api/cards/${card.id}/joiners/${uid}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
+    refresh();
+  }
+
   function startEdit() {
     if (!card) return;
-    setDraft({ ...card });
+    setDraft({
+      title: card.title,
+      description: card.description,
+      spots: card.spots,
+      permission: card.permission,
+    });
     setEditing(true);
   }
 
-  function saveEdit() {
-    if (!draft) return;
-    upsertCard(draft);
-    setEditing(false);
+  async function saveEdit() {
+    if (!card || !draft) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/cards/${card.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      setEditing(false);
+      refresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function removeCard() {
+  async function removeCard() {
     if (!card) return;
     if (!confirm("Delete this card?")) return;
-    deleteCard(card.id);
+    await fetch(`/api/cards/${card.id}`, { method: "DELETE" });
     router.push("/");
   }
 
@@ -140,14 +196,14 @@ export default function PostPage() {
 
       <div className="px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto space-y-6">
         <div className="flex items-center gap-3 mono text-[11px]">
-          {mine && user ? (
+          {card.owner.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatar} className="w-10 h-10 border border-ink object-cover" alt="" />
+            <img src={card.owner.avatarUrl} alt="" className="w-10 h-10 border border-ink object-cover" />
           ) : (
             <div className="w-10 h-10 border border-ink bg-ink/10" aria-hidden />
           )}
           <div>
-            <div>{card.ownerEmail}</div>
+            <div>{card.owner.displayName}</div>
             <div className="opacity-60">{timeAgo(card.createdAt)} ago</div>
           </div>
           <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
@@ -200,7 +256,6 @@ export default function PostPage() {
           </div>
         </div>
 
-        {/* mini map */}
         <div className="border border-ink h-64">
           <ParisMap cards={[card]} highlightId={card.id} />
         </div>
@@ -210,11 +265,13 @@ export default function PostPage() {
           {!mine && user && (
             <>
               {!joined && !requested && !full && (
-                <button
-                  onClick={() => joinCard(card.id, user.email)}
-                  className="btn"
-                >
+                <button onClick={doJoin} disabled={busy} className="btn">
                   {card.permission === "public" ? "JOIN →" : "REQUEST TO JOIN →"}
+                </button>
+              )}
+              {(joined || requested) && (
+                <button onClick={doLeave} disabled={busy} className="btn ghost">
+                  {joined ? "LEAVE" : "CANCEL REQUEST"}
                 </button>
               )}
               {joined && <span className="tag">YOU'RE IN ✓</span>}
@@ -222,17 +279,18 @@ export default function PostPage() {
               {full && !joined && !requested && <span className="tag">FULL</span>}
             </>
           )}
-          {!user && !mine && !full && (
-            <button onClick={() => setGating(true)} className="btn">
-              {card.permission === "public" ? "SIGN IN TO JOIN →" : "SIGN IN TO REQUEST →"}
-            </button>
-          )}
-          {!user && full && <span className="tag">FULL</span>}
           {mine && (
             <>
               <button onClick={startEdit} className="btn ghost">EDIT</button>
               <button onClick={removeCard} className="btn ghost">DELETE</button>
             </>
+          )}
+          {!user && !mine && !full && (
+            <SignInButton mode="modal" forceRedirectUrl={`/post/${card.id}`}>
+              <button className="btn">
+                {card.permission === "public" ? "SIGN IN TO JOIN →" : "SIGN IN TO REQUEST →"}
+              </button>
+            </SignInButton>
           )}
           <button onClick={onShare} className="btn ghost ml-auto" disabled={sharing}>
             {sharing ? "RENDERING…" : "↗ SHARE AS IMAGE"}
@@ -247,17 +305,20 @@ export default function PostPage() {
             </div>
             <ul>
               {card.requests.map((r) => (
-                <li key={r.email} className="flex items-center justify-between px-3 py-2 border-t border-rule">
-                  <div className="mono text-[12px]">{r.email}</div>
+                <li
+                  key={r.userId}
+                  className="flex items-center justify-between px-3 py-2 border-t border-rule"
+                >
+                  <div className="mono text-[12px]">{r.user.displayName}</div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => acceptRequest(card.id, r.email)}
+                      onClick={() => doAccept(r.userId)}
                       className="mono text-[10px] tracking-widest px-3 py-1 border border-ink hover:bg-ink hover:text-paper"
                     >
                       ACCEPT
                     </button>
                     <button
-                      onClick={() => declineRequest(card.id, r.email)}
+                      onClick={() => doDecline(r.userId)}
                       className="mono text-[10px] tracking-widest px-3 py-1 border border-ink hover:bg-ink hover:text-paper"
                     >
                       DECLINE
@@ -280,44 +341,39 @@ export default function PostPage() {
           <ul>
             <li className="px-3 py-2 border-t border-rule flex items-center gap-3">
               <span className="tag shrink-0">CREATOR</span>
-              <span className="mono text-[12px] truncate">{card.ownerEmail}</span>
+              <span className="mono text-[12px] truncate">{card.owner.displayName}</span>
             </li>
-            {card.joiners.map((e) => {
-              const role = card.roles?.[e]?.trim() || "";
-              return (
-                <li key={e} className="px-3 py-2 border-t border-rule flex items-center gap-3">
-                  {mine ? (
-                    <input
-                      defaultValue={role}
-                      placeholder="ROLE — e.g. DJ, COOK, GUEST"
-                      maxLength={40}
-                      onBlur={(ev) => {
-                        const v = ev.currentTarget.value;
-                        if (v !== role) setJoinerRole(card.id, e, v);
-                      }}
-                      onKeyDown={(ev) => {
-                        if (ev.key === "Enter") (ev.currentTarget as HTMLInputElement).blur();
-                      }}
-                      className="mono text-[10px] tracking-widest uppercase px-2 py-1 border border-ink bg-paper w-[180px] focus:outline-none focus:bg-ink focus:text-paper"
-                    />
-                  ) : (
-                    <span className="tag shrink-0">{role.toUpperCase() || "JOINER"}</span>
-                  )}
-                  <span className="mono text-[12px] truncate flex-1">{e}</span>
-                  {mine && (
-                    <button
-                      onClick={() => {
-                        if (confirm(`Remove ${e} from the crew?`)) removeJoiner(card.id, e);
-                      }}
-                      className="mono text-[10px] tracking-widest opacity-50 hover:opacity-100"
-                      aria-label="Remove"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </li>
-              );
-            })}
+            {card.joiners.map((j) => (
+              <li key={j.userId} className="px-3 py-2 border-t border-rule flex items-center gap-3">
+                {mine ? (
+                  <input
+                    defaultValue={j.role}
+                    placeholder="ROLE — e.g. DJ, COOK, GUEST"
+                    maxLength={40}
+                    onBlur={(ev) => {
+                      const v = ev.currentTarget.value;
+                      if (v !== j.role) doSetRole(j.userId, v);
+                    }}
+                    onKeyDown={(ev) => {
+                      if (ev.key === "Enter") (ev.currentTarget as HTMLInputElement).blur();
+                    }}
+                    className="mono text-[10px] tracking-widest uppercase px-2 py-1 border border-ink bg-paper w-[180px] focus:outline-none focus:bg-ink focus:text-paper"
+                  />
+                ) : (
+                  <span className="tag shrink-0">{j.role.toUpperCase() || "JOINER"}</span>
+                )}
+                <span className="mono text-[12px] truncate flex-1">{j.user.displayName}</span>
+                {mine && (
+                  <button
+                    onClick={() => doRemoveJoiner(j.userId)}
+                    className="mono text-[10px] tracking-widest opacity-50 hover:opacity-100"
+                    aria-label="Remove"
+                  >
+                    ✕
+                  </button>
+                )}
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -327,19 +383,6 @@ export default function PostPage() {
           </Link>
         </div>
       </div>
-
-      {gating && card && (
-        <EmailGate
-          reason={card.permission === "public" ? "To join this card" : "To request to join"}
-          onCancel={() => setGating(false)}
-          onDone={() => {
-            const u = getUser();
-            if (u && card) joinCard(card.id, u.email);
-            setGating(false);
-            force((n) => n + 1);
-          }}
-        />
-      )}
 
       {editing && draft && (
         <div className="fixed inset-0 z-40 bg-paper flex flex-col">
@@ -397,8 +440,8 @@ export default function PostPage() {
             </div>
           </div>
           <div className="border-t border-ink px-4 sm:px-6 py-3 flex justify-end gap-2">
-            <button onClick={() => setEditing(false)} className="btn ghost">Cancel</button>
-            <button onClick={saveEdit} className="btn">Save</button>
+            <button onClick={() => setEditing(false)} className="btn ghost" disabled={busy}>Cancel</button>
+            <button onClick={saveEdit} className="btn" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
           </div>
         </div>
       )}

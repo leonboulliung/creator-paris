@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { parisHour, parisNow, formatParisClock } from "@/lib/time";
-import { getUser, subscribe } from "@/lib/storage";
 import { TOD_LABEL, timeOfDayFromHour } from "@/lib/vibe";
 import { Ticker } from "./Ticker";
 
@@ -16,7 +15,6 @@ export function Header({
   onViewChange?: (v: "feed" | "map") => void;
 }) {
   const [clock, setClock] = useState("");
-  const [, force] = useState(0);
 
   useEffect(() => {
     const tick = () => setClock(formatParisClock(parisNow()));
@@ -24,13 +22,6 @@ export function Header({
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, []);
-
-  useEffect(() => {
-    const u = subscribe(() => force((n) => n + 1));
-    return () => u();
-  }, []);
-
-  const user = typeof window === "undefined" ? null : getUser();
 
   return (
     <header className="sticky top-0 z-30 bg-paper border-b border-ink">
@@ -66,20 +57,17 @@ export function Header({
               </button>
             </div>
           )}
-          {user && (
+          <SignedIn>
             <Link
               href="/carnet"
-              className="ml-1 inline-flex items-center justify-center w-9 h-9 border border-ink overflow-hidden hover:bg-ink"
-              title="Your Carnet"
+              className="ml-1 mono text-[10px] tracking-widest px-3 py-1.5 border border-ink hover:bg-ink hover:text-paper"
             >
-              {user.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="mono text-[10px]">ME</span>
-              )}
+              CARNET
             </Link>
-          )}
+            <div className="ml-1 [&_.cl-userButtonAvatarBox]:!w-9 [&_.cl-userButtonAvatarBox]:!h-9 [&_.cl-userButtonAvatarBox]:!rounded-none [&_.cl-userButtonAvatarBox]:!border [&_.cl-userButtonAvatarBox]:!border-ink">
+              <UserButton afterSignOutUrl="/" />
+            </div>
+          </SignedIn>
           <SignedOut>
             <SignInButton mode="modal">
               <button className="ml-1 mono text-[10px] tracking-widest px-3 py-1.5 border border-ink hover:bg-ink hover:text-paper">
@@ -87,11 +75,6 @@ export function Header({
               </button>
             </SignInButton>
           </SignedOut>
-          <SignedIn>
-            <div className="ml-1 [&_.cl-userButtonAvatarBox]:!w-9 [&_.cl-userButtonAvatarBox]:!h-9 [&_.cl-userButtonAvatarBox]:!rounded-none [&_.cl-userButtonAvatarBox]:!border [&_.cl-userButtonAvatarBox]:!border-ink">
-              <UserButton afterSignOutUrl="/" />
-            </div>
-          </SignedIn>
         </div>
       </div>
 

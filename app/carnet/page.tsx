@@ -1,18 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 import { Header } from "@/components/Header";
 import { ParisMap } from "@/components/ParisMap";
-import {
-  bindCrossTab,
-  ensureMigrated,
-  getTrackRecord,
-  getUser,
-  subscribe,
-  sweepExpired,
-  updateAvatar,
-} from "@/lib/storage";
+import { fetchTrackRecord } from "@/lib/db";
+import { useRealtimeCards } from "@/lib/realtime";
 import type { TrackEntry } from "@/lib/types";
 import { expiresIn, parisHourOf, timeAgo } from "@/lib/time";
 import { downloadCarnetPoster, exportCarnetPrintable, shareCard } from "@/lib/share";
@@ -20,44 +14,23 @@ import { ACTIVITY_LABEL, computeVibe } from "@/lib/vibe";
 
 type Tab = "track" | "map" | "export";
 
-async function downscale(file: File, max = 256): Promise<string> {
-  const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
-  const w = Math.round(bmp.width * scale);
-  const h = Math.round(bmp.height * scale);
-  const side = Math.min(w, h);
-  const tmp = document.createElement("canvas");
-  tmp.width = w;
-  tmp.height = h;
-  tmp.getContext("2d")!.drawImage(bmp, 0, 0, w, h);
-  const sq = document.createElement("canvas");
-  sq.width = max;
-  sq.height = max;
-  sq.getContext("2d")!.drawImage(tmp, (w - side) / 2, (h - side) / 2, side, side, 0, 0, max, max);
-  return sq.toDataURL("image/jpeg", 0.85);
-}
-
 export default function CarnetPage() {
-  const [ready, setReady] = useState(false);
+  const { user, isLoaded } = useUser();
   const [tab, setTab] = useState<Tab>("track");
   const [track, setTrack] = useState<TrackEntry[]>([]);
-  const fileRef = useRef<HTMLInputElement>(null);
+
+  const refresh = useCallback(() => {
+    if (!user) return;
+    fetchTrackRecord(user.id).then(setTrack).catch(() => setTrack([]));
+  }, [user]);
 
   useEffect(() => {
-    ensureMigrated();
-    bindCrossTab();
-    sweepExpired();
-    const refresh = () => {
-      const u = getUser();
-      setTrack(u ? getTrackRecord(u.email) : []);
-    };
+    if (!user) return;
+    // make sure the user has a profile in supabase
+    fetch("/api/profile/me", { method: "POST" }).catch(() => {});
     refresh();
-    const unsub = subscribe(refresh);
-    setReady(true);
-    return () => unsub();
-  }, []);
-
-  const user = typeof window === "undefined" ? null : getUser();
+  }, [user, refresh]);
+  useRealtimeCards(refresh);
 
   const mapCards = useMemo(() => track.map((t) => t.card), [track]);
   const counts = useMemo(() => {
@@ -66,14 +39,7 @@ export default function CarnetPage() {
     return { created, joined, total: track.length };
   }, [track]);
 
-  async function onAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const url = await downscale(f, 256);
-    updateAvatar(url);
-  }
-
-  if (!ready) return <div className="min-h-screen bg-paper" />;
+  if (!isLoaded) return <div className="min-h-screen bg-paper" />;
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -88,27 +54,28 @@ export default function CarnetPage() {
     );
   }
 
+  const displayName =
+    [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
+    user.username ||
+    user.primaryPhoneNumber?.phoneNumber ||
+    `Paris-${user.id.slice(-4)}`;
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
 
       <div className="border-b border-ink px-4 sm:px-8 py-6">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="w-16 h-16 sm:w-20 sm:h-20 border border-ink overflow-hidden bg-white"
-            aria-label="Change picture"
-          >
-            {user.avatar ? (
+          <div className="w-16 h-16 sm:w-20 sm:h-20 border border-ink overflow-hidden bg-white">
+            {user.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-            ) : null}
-          </button>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onAvatarChange} />
+              <img src={user.imageUrl} alt="" className="w-full h-full object-cover" />
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             <div className="mono text-[10px] tracking-widest opacity-60">CARNET</div>
             <h1 className="editorial font-black text-[34px] sm:text-[56px] leading-none mt-1 truncate">
-              {user.email}
+              {displayName}
             </h1>
             <div className="mono text-[11px] mt-2 opacity-70">
               {counts.total} ENTR{counts.total === 1 ? "Y" : "IES"} · {counts.created} CREATED · {counts.joined} JOINED
@@ -133,7 +100,11 @@ export default function CarnetPage() {
         {tab === "track" && (
           <div>
             {track.map((t) => (
-              <TrackRow key={`${t.card.id}-${t.isCreator ? "c" : "j"}`} entry={t} user={user} />
+              <TrackRow
+                key={`${t.card.id}-${t.isCreator ? "c" : "j"}`}
+                entry={t}
+                avatarUrl={user.imageUrl}
+              />
             ))}
             {track.length === 0 && (
               <div className="px-6 py-20 text-center">
@@ -173,7 +144,7 @@ export default function CarnetPage() {
                       title: c.title,
                       createdAt: c.createdAt,
                     })),
-                    user.email,
+                    displayName,
                   )
                 }
                 className="btn mt-3"
@@ -189,12 +160,17 @@ export default function CarnetPage() {
                 All your cards stitched together · opens a print window — save as PDF.
               </p>
               <button
-                onClick={() => exportCarnetPrintable(mapCards, user.email)}
+                onClick={() => exportCarnetPrintable(mapCards, displayName)}
                 className="btn mt-3"
                 disabled={mapCards.length === 0}
               >
                 EXPORT AS PDF
               </button>
+            </div>
+
+            <div className="border-t border-ink pt-6 mono text-[11px] opacity-60">
+              Want to change your name or avatar? Click the avatar in the top-right and
+              pick „Manage account" — handled by Clerk.
             </div>
           </div>
         )}
@@ -205,10 +181,10 @@ export default function CarnetPage() {
 
 function TrackRow({
   entry,
-  user,
+  avatarUrl,
 }: {
   entry: TrackEntry;
-  user: { email: string; avatar: string };
+  avatarUrl?: string;
 }) {
   const { card, role, at, isCreator } = entry;
   const vibe = computeVibe({
@@ -249,7 +225,7 @@ function TrackRow({
             {card.title}
           </h2>
           <div className="mt-3 mono text-[11px] opacity-70">
-            {isCreator ? "BY YOU" : `BY ${card.ownerEmail}`} · {card.joiners.length}/{card.spots} SPOTS · {expiresIn(card.expiresAt).toUpperCase()}
+            {isCreator ? "BY YOU" : `BY ${card.owner.displayName.toUpperCase()}`} · {card.joiners.length}/{card.spots} SPOTS · {expiresIn(card.expiresAt).toUpperCase()}
           </div>
         </div>
       </Link>
@@ -257,7 +233,7 @@ function TrackRow({
         onClick={async () => {
           setBusy(true);
           try {
-            await shareCard(card, user.avatar);
+            await shareCard(card, avatarUrl);
           } finally {
             setBusy(false);
           }

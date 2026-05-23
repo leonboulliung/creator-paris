@@ -242,7 +242,7 @@ export async function renderShareImage(card: Card, avatarDataUrl?: string): Prom
   ctx.fillStyle = "#0a0a0a";
   ctx.font = "500 22px 'JetBrains Mono', monospace";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText(card.ownerEmail, avX + avSize + 22, avY + avSize / 2 + 8);
+  ctx.fillText(card.owner.displayName, avX + avSize + 22, avY + avSize / 2 + 8);
 
   // bottom panel: title + meta + minimap
   const panelY = heroH;
