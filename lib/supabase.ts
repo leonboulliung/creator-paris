@@ -3,30 +3,41 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!url || !anonKey) {
-  // Don't crash at import time — components can read this and degrade gracefully.
-  if (typeof window !== "undefined") {
-    // eslint-disable-next-line no-console
-    console.warn(
-      "[creator.paris] Supabase env vars missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+export const supabaseConfigured = Boolean(url && anonKey);
+
+// Build a client even when env vars are missing — but guard against crashes.
+// The Supabase JS v2 client validates the URL string at construction in
+// some builds; using a syntactically valid placeholder avoids that path.
+function safeCreate(): SupabaseClient {
+  try {
+    return createClient(
+      url || "https://placeholder.supabase.co",
+      anonKey || "sb_publishable_placeholder",
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+        realtime: { params: { eventsPerSecond: 10 } },
+      },
     );
+  } catch (e) {
+    // Last-resort minimal stub so module load never throws on the client.
+    if (typeof window !== "undefined") {
+      // eslint-disable-next-line no-console
+      console.error("[creator.paris] Supabase init failed", e);
+    }
+    return createClient("https://placeholder.supabase.co", "sb_publishable_placeholder", {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
   }
 }
 
-/**
- * Browser-side Supabase client. Uses the public anon key.
- * RLS allows SELECT on all tables; INSERT/UPDATE/DELETE are blocked
- * for the anon role — those go through Next.js API routes that use
- * the service role key server-side.
- */
-export const supabase: SupabaseClient = createClient(
-  url || "https://placeholder.supabase.co",
-  anonKey || "placeholder",
-  {
-    auth: { persistSession: false, autoRefreshToken: false },
-    realtime: { params: { eventsPerSecond: 10 } },
-  },
-);
+export const supabase: SupabaseClient = safeCreate();
+
+if (!supabaseConfigured && typeof window !== "undefined") {
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[creator.paris] Supabase env vars missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel.",
+  );
+}
 
 /**
  * Server-only admin client. Bypasses RLS — never import in client code.
@@ -40,5 +51,3 @@ export function supabaseAdmin(): SupabaseClient {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
-
-export const supabaseConfigured = Boolean(url && anonKey);
