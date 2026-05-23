@@ -11,11 +11,16 @@ import { supabase, supabaseConfigured } from "./supabase";
 export function useRealtimeCards(refresh: () => void) {
   useEffect(() => {
     if (!supabaseConfigured) return;
+    // Each hook instance needs its OWN channel — Supabase's channel(name)
+    // returns the same instance for the same name, and after .subscribe()
+    // is called you can't add new .on() listeners. Multiple components
+    // calling this hook would otherwise collide on the second mount.
+    const channelName = `cp-realtime-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
     let cancelled = false;
     let channel: ReturnType<typeof supabase.channel> | null = null;
     try {
       channel = supabase
-        .channel("cp-realtime")
+        .channel(channelName)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "cards" },

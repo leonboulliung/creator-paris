@@ -34,8 +34,9 @@ export function Feed({ view }: { view: "feed" | "map" }) {
       .then((next) => {
         setCards((prev) => {
           const prevIds = new Set(prev.map((c) => c.id));
+          const isFirstLoad = prev.length === 0;
           const newFresh = next.filter((c) => !prevIds.has(c.id)).map((c) => c.id);
-          if (loaded && newFresh.length > 0) {
+          if (!isFirstLoad && newFresh.length > 0) {
             setFreshIds((f) => {
               const nx = new Set(f);
               newFresh.forEach((id) => nx.add(id));
@@ -56,7 +57,7 @@ export function Feed({ view }: { view: "feed" | "map" }) {
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
-  }, [loaded]);
+  }, []);
 
   useEffect(() => {
     refresh();
