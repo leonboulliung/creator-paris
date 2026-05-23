@@ -31,7 +31,7 @@ export default function HomePage() {
       </SignedIn>
 
       <SignedOut>
-        <SignUpButton mode="modal" forceRedirectUrl="/">
+        <SignUpButton mode="modal" forceRedirectUrl="/onboarding?next=/">
           <button
             className="fixed bottom-5 right-5 z-30 bg-ink text-paper w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 mono text-[12px] tracking-widest shadow-xl hover:scale-[1.02] transition"
             aria-label="Sign up to post"

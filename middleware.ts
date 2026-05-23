@@ -2,7 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Only these routes require an authenticated user. The feed (/), detail
 // pages (/post/[id]), and the Clerk-hosted auth routes stay public.
-const isProtectedRoute = createRouteMatcher(["/carnet(.*)"]);
+const isProtectedRoute = createRouteMatcher(["/carnet(.*)", "/onboarding(.*)"]);
 
 export default clerkMiddleware(async (auth, request) => {
   if (isProtectedRoute(request)) {

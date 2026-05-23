@@ -286,7 +286,10 @@ export default function PostPage() {
             </>
           )}
           {!user && !mine && !full && (
-            <SignUpButton mode="modal" forceRedirectUrl={`/post/${card.id}`}>
+            <SignUpButton
+              mode="modal"
+              forceRedirectUrl={`/onboarding?next=/post/${card.id}`}
+            >
               <button className="btn">
                 {card.permission === "public" ? "SIGN UP TO JOIN →" : "SIGN UP TO REQUEST →"}
               </button>
