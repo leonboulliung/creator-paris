@@ -288,7 +288,7 @@ export async function renderShareImage(card: Card, avatarDataUrl?: string): Prom
         })
         .toUpperCase()
     : "";
-  const meta2 = `LIVE UNTIL ${expiryStr}  ·  ${card.joiners.length}/${card.spots} SPOTS`;
+  const meta2 = `STARTS ${expiryStr}  ·  ${card.joiners.length}/${card.spots} SPOTS`;
   ctx.fillText(meta1, 48, ty + 24);
   ctx.fillText(meta2, 48, ty + 56);
 
@@ -511,7 +511,7 @@ export function exportCarnetPrintable(cards: Card[], email: string) {
         <div class="meta">${email.toUpperCase()} · ${new Date(c.createdAt).toISOString().slice(0,10)}</div>
         <div class="hero" style="background:${v.cssBackground}"></div>
         <h1>${escapeHtml(c.title)}</h1>
-        <div class="meta">${escapeHtml(c.location.label)} · live until ${escapeHtml(expiryStr)} · ${c.joiners.length}/${c.spots} spots</div>
+        <div class="meta">${escapeHtml(c.location.label)} · starts ${escapeHtml(expiryStr)} · ${c.joiners.length}/${c.spots} spots</div>
         <p class="desc">${escapeHtml(c.description || "")}</p>
         <div class="wm">CREATOR.PARIS — ONE THING, THIS WEEK.</div>
       </div>`;

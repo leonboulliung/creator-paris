@@ -231,7 +231,7 @@ export default function PostPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mono text-[11px]">
           <div className="border border-ink p-3">
-            <div className="opacity-60">EXPIRES</div>
+            <div className="opacity-60">STARTS</div>
             <div className="mt-1 text-[14px]">
               {card.expiresAt
                 ? new Date(card.expiresAt).toLocaleString("en-GB", {

@@ -120,10 +120,13 @@ export async function fetchActiveCards(): Promise<Card[]> {
     .from("cards")
     .select(CARD_SELECT)
     .eq("archived", false)
-    .gt("expires_at", nowIso)
-    .order("created_at", { ascending: false });
+    .gt("expires_at", nowIso) // expires_at column now holds the event start time
+    .order("expires_at", { ascending: true });
   if (error) throw error;
-  return ((data || []) as unknown as CardRow[]).map(mapCard);
+  return ((data || []) as unknown as CardRow[])
+    .map(mapCard)
+    // Hide cards from public view once their crew is full.
+    .filter((c) => c.joiners.length < c.spots);
 }
 
 export async function fetchCardById(id: string): Promise<Card | null> {

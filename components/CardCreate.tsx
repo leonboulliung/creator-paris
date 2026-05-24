@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { searchQuartiers, Quartier } from "@/lib/quartiers";
 import { computeVibe } from "@/lib/vibe";
 import type { Permission } from "@/lib/types";
+import { buildWhenChips, startsLabel, toLocalInputValue } from "@/lib/time";
 import { ParisMap } from "./ParisMap";
 
 export function CardCreate({ onClose }: { onClose: () => void }) {
@@ -14,7 +15,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
   const [description, setDescription] = useState("");
   const [spots, setSpots] = useState(4);
   const [permission, setPermission] = useState<Permission>("public");
-  const [durationDays, setDurationDays] = useState<1 | 3 | 7>(3);
+  const [startsAt, setStartsAt] = useState<Date | null>(null);
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<Quartier | null>(null);
   const [latlng, setLatlng] = useState<{ lat: number; lng: number } | null>(null);
@@ -41,7 +42,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
   }
 
   async function submit() {
-    if (!title.trim() || !latlng) return;
+    if (!title.trim() || !latlng || !startsAt) return;
     setSubmitting(true);
     setError("");
     try {
@@ -58,7 +59,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
           },
           spots,
           permission,
-          durationDays,
+          startsAt: startsAt.toISOString(),
         }),
       });
       const json = await res.json();
@@ -76,7 +77,13 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const canSubmit = !!title.trim() && !!latlng && !submitting;
+  const canSubmit = !!title.trim() && !!latlng && !!startsAt && !submitting;
+  const chips = useMemo(() => buildWhenChips(new Date()), []);
+  const minLocal = useMemo(() => {
+    const d = new Date(Date.now() + 5 * 60_000);
+    return toLocalInputValue(d);
+  }, []);
+  const startsLocal = startsAt ? toLocalInputValue(startsAt) : "";
 
   return (
     <div className="fixed inset-0 z-40 bg-paper flex flex-col">
@@ -163,22 +170,43 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
             </div>
 
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">LIVE FOR</label>
-              <div className="mt-1 flex">
-                {([1, 3, 7] as const).map((d, i) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDurationDays(d)}
-                    className={`flex-1 px-3 py-2 border border-ink mono text-[10px] tracking-widest ${i > 0 ? "border-l-0" : ""} ${durationDays === d ? "bg-ink text-paper" : "bg-paper"}`}
-                  >
-                    {d === 1 ? "24 HOURS" : `${d} DAYS`}
-                  </button>
-                ))}
+              <label className="mono text-[10px] tracking-widest opacity-70">WHEN DOES IT START?</label>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                {chips.map((c) => {
+                  const active = startsAt?.getTime() === c.ts;
+                  return (
+                    <button
+                      key={c.label}
+                      type="button"
+                      onClick={() => setStartsAt(new Date(c.ts))}
+                      className={`px-3 py-2 border border-ink mono text-[10px] tracking-widest text-left ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
+                    >
+                      {c.label}
+                    </button>
+                  );
+                })}
               </div>
-              <p className="mono text-[10px] mt-1 opacity-60">
-                THEN AUTO-ARCHIVES INTO YOUR CARNET. EXPIRES {new Date(Date.now() + durationDays * 86_400_000).toLocaleString("en-GB", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).toUpperCase()}
-              </p>
+              <div className="mt-2">
+                <label className="mono text-[10px] tracking-widest opacity-60 block mb-1">
+                  OR PICK A SPECIFIC MOMENT
+                </label>
+                <input
+                  type="datetime-local"
+                  value={startsLocal}
+                  min={minLocal}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setStartsAt(v ? new Date(v) : null);
+                  }}
+                  className="input mt-1"
+                />
+              </div>
+              {startsAt && (
+                <p className="mono text-[10px] mt-2 opacity-70">
+                  HAPPENS · {startsLabel(startsAt.getTime())}
+                  <span className="opacity-50"> · HIDES FROM PUBLIC FEED ONCE FULL OR STARTED</span>
+                </p>
+              )}
             </div>
 
             <div>

@@ -4,7 +4,10 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { ensureProfile } from "@/lib/server/profile";
 import { newId } from "@/lib/id";
 
-const ALLOWED_DURATIONS = new Set([1, 3, 7]);
+// Hard ceiling: a card may live at most 30 days into the future. Most things
+// will be hours or days away — this just prevents pathological inputs.
+const MAX_LEAD_MS = 30 * 86_400_000;
+const MIN_LEAD_MS = 5 * 60_000; // 5 min minimum into the future
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -16,7 +19,7 @@ export async function POST(req: Request) {
     location?: { lat: number; lng: number; label: string };
     spots?: number;
     permission?: "public" | "request";
-    durationDays?: number;
+    startsAt?: string; // ISO 8601
   };
   try {
     body = await req.json();
@@ -28,7 +31,6 @@ export async function POST(req: Request) {
   const description = (body.description || "").trim();
   const spots = Math.max(1, Math.min(99, Math.floor(body.spots || 1)));
   const permission = body.permission === "request" ? "request" : "public";
-  const durationDays = body.durationDays && ALLOWED_DURATIONS.has(body.durationDays) ? body.durationDays : 3;
   const location = body.location;
 
   if (!title) return NextResponse.json({ error: "title_required" }, { status: 400 });
@@ -41,6 +43,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "location_required" }, { status: 400 });
   }
 
+  const startsMs = body.startsAt ? Date.parse(body.startsAt) : NaN;
+  if (!Number.isFinite(startsMs)) {
+    return NextResponse.json({ error: "starts_at_required" }, { status: 400 });
+  }
+  const now = Date.now();
+  if (startsMs < now + MIN_LEAD_MS) {
+    return NextResponse.json({ error: "starts_at_too_soon" }, { status: 400 });
+  }
+  if (startsMs > now + MAX_LEAD_MS) {
+    return NextResponse.json({ error: "starts_at_too_far" }, { status: 400 });
+  }
+
   await ensureProfile(userId);
   const admin = supabaseAdmin();
 
@@ -51,8 +65,6 @@ export async function POST(req: Request) {
     .eq("owner_id", userId)
     .eq("archived", false);
 
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + durationDays * 86_400_000);
   const id = newId();
 
   const { data, error } = await admin
@@ -65,8 +77,11 @@ export async function POST(req: Request) {
       location,
       spots,
       permission,
-      duration_days: durationDays,
-      expires_at: expiresAt.toISOString(),
+      // `expires_at` column is repurposed: it now stores the event START time.
+      // Cards auto-archive once this passes — which matches the new rule.
+      // `duration_days` is vestigial; we send 1 to satisfy the legacy CHECK.
+      duration_days: 1,
+      expires_at: new Date(startsMs).toISOString(),
     })
     .select()
     .single();
