@@ -46,20 +46,22 @@ export default function PostPage() {
   }, [refresh]);
   useRealtimeCards(refresh);
 
-  if (!loaded) return <div className="min-h-screen bg-paper" />;
+  if (!loaded) return <div className="h-[100dvh] bg-paper" />;
   if (!card) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="app-shell">
         <Header />
-        <div className="flex-1 grid place-items-center px-6">
-          <div className="text-center">
-            <div className="editorial font-black text-[40px]">Card not found.</div>
-            <p className="mono text-[12px] mt-2 opacity-70">
-              It may have been removed or never existed.
-            </p>
-            <Link href="/" className="btn mt-6 inline-block">← Back to Paris</Link>
+        <main>
+          <div className="min-h-full grid place-items-center px-6 py-20">
+            <div className="text-center">
+              <div className="editorial font-black text-[40px]">Card not found.</div>
+              <p className="mono text-[12px] mt-2 opacity-70">
+                It may have been removed or never existed.
+              </p>
+              <Link href="/" className="btn mt-6 inline-block">← Back to Paris</Link>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
@@ -171,8 +173,9 @@ export default function PostPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="app-shell">
       <Header />
+      <main>
 
       <VibeBackground
         title={card.title}
@@ -382,16 +385,20 @@ export default function PostPage() {
           </ul>
         </div>
 
-        <div className="pt-6">
+        <div
+          className="pt-6"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)" }}
+        >
           <Link href="/" className="mono text-[11px] tracking-widest hover:underline">
             ← BACK TO PARIS
           </Link>
         </div>
       </div>
+      </main>
 
       {editing && draft && (
         <div className="fixed inset-0 z-40 bg-paper flex flex-col">
-          <div className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3">
+          <div className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 shrink-0 safe-top">
             <div className="mono text-[10px] tracking-widest opacity-70">EDIT · ONE THING</div>
             <button onClick={() => setEditing(false)} className="mono text-[11px] tracking-widest hover:underline">
               CLOSE ✕
@@ -444,7 +451,10 @@ export default function PostPage() {
               </div>
             </div>
           </div>
-          <div className="border-t border-ink px-4 sm:px-6 py-3 flex justify-end gap-2">
+          <div
+            className="border-t border-ink px-4 sm:px-6 py-3 flex justify-end gap-2 shrink-0"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+          >
             <button onClick={() => setEditing(false)} className="btn ghost" disabled={busy}>Cancel</button>
             <button onClick={saveEdit} className="btn" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
           </div>

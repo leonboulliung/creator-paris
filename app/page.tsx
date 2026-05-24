@@ -12,9 +12,9 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="min-h-screen flex flex-col">
+      <div className="app-shell">
         <Header view={view} onViewChange={setView} />
-        <main className="flex-1">
+        <main className={view === "map" ? "no-scroll" : undefined}>
           <Feed view={view} />
         </main>
       </div>

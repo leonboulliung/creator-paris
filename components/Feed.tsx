@@ -70,7 +70,7 @@ export function Feed({ view }: { view: "feed" | "map" }) {
 
   if (view === "map") {
     return (
-      <div className="relative h-[calc(100dvh-128px)] sm:h-[calc(100dvh-88px)]">
+      <div className="relative h-full w-full">
         <ParisMap
           cards={cards}
           freshIds={freshIds}
@@ -78,21 +78,24 @@ export function Feed({ view }: { view: "feed" | "map" }) {
           height="100%"
         />
         <div
-          className="absolute left-3 z-[400] mono text-[10px] tracking-widest bg-paper border border-ink px-2 py-1 flex items-center gap-2"
+          className="absolute left-3 z-[400] mono text-[10px] tracking-widest bg-paper border border-ink px-2 py-1 flex items-center gap-2 max-w-[calc(100%-24px)] overflow-hidden"
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
         >
           <span className="tabular-nums">{clock}</span>
           <span>·</span>
           <span>{TOD_LABEL[tod]}</span>
           <span>·</span>
-          <span>{cards.length} ACTIVE</span>
+          <span className="whitespace-nowrap">{cards.length} ACTIVE</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-paper">
+    <div
+      className="bg-paper"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)" }}
+    >
       {loaded && cards.length === 0 && (
         <div className="px-4 sm:px-6 py-14 border-b border-ink text-center">
           <div className="editorial font-black text-[34px] sm:text-[44px]">

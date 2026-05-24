@@ -166,7 +166,9 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-40 bg-paper flex flex-col">
-      <div className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3">
+      <div
+        className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 shrink-0 safe-top"
+      >
         <div className="mono text-[10px] tracking-widest opacity-70">NEW · ONE THING</div>
         <button onClick={onClose} className="mono text-[11px] tracking-widest hover:underline">
           CLOSE ✕
@@ -468,7 +470,10 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
         )}
       </div>
 
-      <div className="border-t border-ink px-4 sm:px-6 py-3 flex items-center justify-end gap-2">
+      <div
+        className="border-t border-ink px-4 sm:px-6 py-3 flex items-center justify-end gap-2 shrink-0"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+      >
         <button onClick={onClose} className="btn ghost" disabled={submitting}>
           Cancel
         </button>

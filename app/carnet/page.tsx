@@ -39,17 +39,19 @@ export default function CarnetPage() {
     return { created, joined, total: track.length };
   }, [track]);
 
-  if (!isLoaded) return <div className="min-h-screen bg-paper" />;
+  if (!isLoaded) return <div className="h-[100dvh] bg-paper" />;
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="app-shell">
         <Header />
-        <div className="flex-1 grid place-items-center px-6 text-center">
-          <div>
-            <div className="editorial font-black text-[40px]">No carnet yet.</div>
-            <Link href="/" className="btn mt-6 inline-block">← Go set up</Link>
+        <main>
+          <div className="grid place-items-center min-h-full px-6 text-center py-20">
+            <div>
+              <div className="editorial font-black text-[40px]">No carnet yet.</div>
+              <Link href="/" className="btn mt-6 inline-block">← Go set up</Link>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
@@ -61,10 +63,11 @@ export default function CarnetPage() {
     `Paris-${user.id.slice(-4)}`;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="app-shell">
       <Header />
+      <main className={tab === "map" ? "no-scroll flex flex-col" : "flex flex-col"}>
 
-      <div className="border-b border-ink px-4 sm:px-8 py-6">
+      <div className="border-b border-ink px-4 sm:px-8 py-6 shrink-0">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 sm:w-20 sm:h-20 border border-ink overflow-hidden bg-white">
             {user.imageUrl && (
@@ -84,7 +87,7 @@ export default function CarnetPage() {
         </div>
       </div>
 
-      <div className="border-b border-ink px-4 sm:px-8 flex">
+      <div className="border-b border-ink px-4 sm:px-8 flex shrink-0">
         {(["track", "map", "export"] as Tab[]).map((t) => (
           <button
             key={t}
@@ -96,7 +99,7 @@ export default function CarnetPage() {
         ))}
       </div>
 
-      <div className="flex-1">
+      <div className={tab === "map" ? "flex-1 min-h-0" : "flex-1 min-h-0 overflow-y-auto"}>
         {tab === "track" && (
           <div>
             {track.map((t) => (
@@ -119,7 +122,7 @@ export default function CarnetPage() {
         )}
 
         {tab === "map" && (
-          <div className="relative h-[calc(100dvh-330px)] sm:h-[calc(100dvh-280px)] min-h-[400px]">
+          <div className="relative h-full">
             <ParisMap cards={mapCards} />
             <div
               className="absolute left-3 z-[400] mono text-[10px] tracking-widest bg-paper border border-ink px-2 py-1"
@@ -178,6 +181,7 @@ export default function CarnetPage() {
           </div>
         )}
       </div>
+      </main>
     </div>
   );
 }
