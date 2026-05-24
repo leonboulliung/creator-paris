@@ -1,45 +1,128 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { searchQuartiers, Quartier } from "@/lib/quartiers";
-import { computeVibe } from "@/lib/vibe";
+import { ACTIVITY_ACCENT, ACTIVITY_GLYPH, ACTIVITY_LABEL, CATEGORY_ORDER, computeVibe, type Activity } from "@/lib/vibe";
 import type { Permission } from "@/lib/types";
-import { buildWhenChips, startsLabel, toLocalInputValue } from "@/lib/time";
+import { startsLabel } from "@/lib/time";
+import { combinedSearch, type LocationResult } from "@/lib/location";
 import { ParisMap } from "./ParisMap";
+
+type DayMode = "today" | "tomorrow" | "custom";
+type SpotPreset = 2 | 3 | 4 | 5 | 6 | 8;
+const SPOT_CHIPS: SpotPreset[] = [2, 3, 4, 5, 6, 8];
+
+function pad(n: number) { return String(n).padStart(2, "0"); }
+function isoDate(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 
 export function CardCreate({ onClose }: { onClose: () => void }) {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [spots, setSpots] = useState(4);
+  const [category, setCategory] = useState<Activity | null>(null);
+
+  const [spots, setSpots] = useState<number>(4);
+  const [spotsCustom, setSpotsCustom] = useState<boolean>(false);
   const [permission, setPermission] = useState<Permission>("public");
-  const [startsAt, setStartsAt] = useState<Date | null>(null);
+
+  // When? two-stage picker
+  const [dayMode, setDayMode] = useState<DayMode | null>(null);
+  const [customDate, setCustomDate] = useState<string>("");          // YYYY-MM-DD
+  const [hour, setHour] = useState<number | null>(null);
+  const [customHM, setCustomHM] = useState<string>("");              // HH:MM
+
+  // Location autocomplete
   const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState<Quartier | null>(null);
+  const [picked, setPicked] = useState<LocationResult | null>(null);
   const [latlng, setLatlng] = useState<{ lat: number; lng: number } | null>(null);
-  const [suggestions, setSuggestions] = useState<Quartier[]>([]);
+  const [suggestions, setSuggestions] = useState<LocationResult[]>([]);
+  const [searching, setSearching] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>("");
 
+  // ====== derived values ======
+
+  const startsAt = useMemo<Date | null>(() => {
+    let d: Date | null = null;
+    if (dayMode === "today") d = new Date();
+    else if (dayMode === "tomorrow") { d = new Date(); d.setDate(d.getDate() + 1); }
+    else if (dayMode === "custom" && customDate) {
+      const [y, m, dd] = customDate.split("-").map(Number);
+      d = new Date();
+      d.setFullYear(y, m - 1, dd);
+    }
+    if (!d) return null;
+
+    if (hour !== null) {
+      d.setHours(hour, 0, 0, 0);
+    } else if (customHM) {
+      const [hh, mm] = customHM.split(":").map(Number);
+      d.setHours(hh, mm, 0, 0);
+    } else {
+      return null; // day set, time not yet
+    }
+
+    return d;
+  }, [dayMode, customDate, hour, customHM]);
+
+  const hourChips = useMemo(() => {
+    const base = [11, 13, 15, 17, 18, 19, 20, 21, 22];
+    if (dayMode !== "today") return base;
+    const now = new Date();
+    const min = now.getHours() + 1;
+    return base.filter((h) => h >= min);
+  }, [dayMode]);
+
+  const customDayLabel = useMemo(() => {
+    if (!customDate) return "";
+    const d = new Date(customDate + "T00:00:00");
+    return d
+      .toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" })
+      .toUpperCase();
+  }, [customDate]);
+
+  const todayValue = useMemo(() => isoDate(new Date()), []);
+
+  const vibePreview = useMemo(
+    () =>
+      computeVibe({
+        title: title || "What's your one thing this week?",
+        label: picked?.label || query || "Paris",
+        category,
+      }),
+    [title, picked, query, category],
+  );
+
+  // ====== location autocomplete with debounced async fetch ======
+
   useEffect(() => {
-    setSuggestions(searchQuartiers(query, 8));
-  }, [query]);
+    if (!query || query === picked?.label) {
+      setSuggestions([]);
+      return;
+    }
+    const handle = window.setTimeout(async () => {
+      setSearching(true);
+      const ctrl = new AbortController();
+      try {
+        const results = await combinedSearch(query, ctrl.signal);
+        setSuggestions(results);
+      } finally {
+        setSearching(false);
+      }
+    }, 220);
+    return () => window.clearTimeout(handle);
+  }, [query, picked]);
 
-  const vibePreview = useMemo(() => {
-    return computeVibe({
-      title: title || "What's your one thing this week?",
-      label: picked?.name || query || "Paris",
-    });
-  }, [title, picked, query]);
-
-  function pickQuartier(q: Quartier) {
-    setPicked(q);
-    setQuery(q.name);
-    setLatlng({ lat: q.lat, lng: q.lng });
+  function pickLocation(r: LocationResult) {
+    setPicked(r);
+    setQuery(r.label);
+    setLatlng({ lat: r.lat, lng: r.lng });
     setSuggestions([]);
   }
+
+  // ====== submit ======
 
   async function submit() {
     if (!title.trim() || !latlng || !startsAt) return;
@@ -55,10 +138,11 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
           location: {
             lat: latlng.lat,
             lng: latlng.lng,
-            label: picked?.name || query.trim() || "Paris",
+            label: picked?.label || query.trim() || "Paris",
           },
           spots,
           permission,
+          category,
           startsAt: startsAt.toISOString(),
         }),
       });
@@ -78,12 +162,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
   }
 
   const canSubmit = !!title.trim() && !!latlng && !!startsAt && !submitting;
-  const chips = useMemo(() => buildWhenChips(new Date()), []);
-  const minLocal = useMemo(() => {
-    const d = new Date(Date.now() + 5 * 60_000);
-    return toLocalInputValue(d);
-  }, []);
-  const startsLocal = startsAt ? toLocalInputValue(startsAt) : "";
+  const chipBase = "px-3 py-2 border border-ink mono text-[10px] tracking-widest";
 
   return (
     <div className="fixed inset-0 z-40 bg-paper flex flex-col">
@@ -95,6 +174,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {/* vibe preview */}
         <div
           className="relative h-40 sm:h-56 noise"
           style={{ backgroundImage: vibePreview.cssBackground }}
@@ -112,8 +192,9 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="px-4 sm:px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-5 max-w-5xl">
-          <div className="space-y-4">
+        <div className="px-4 sm:px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl">
+          <div className="space-y-5">
+            {/* TITLE */}
             <div>
               <label className="mono text-[10px] tracking-widest opacity-70">TITLE</label>
               <input
@@ -125,6 +206,36 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
               />
             </div>
 
+            {/* CATEGORY */}
+            <div>
+              <label className="mono text-[10px] tracking-widest opacity-70">CATEGORY</label>
+              <div className="mt-1 grid grid-cols-3 gap-2">
+                {CATEGORY_ORDER.map((c) => {
+                  const active = category === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCategory(active ? null : c)}
+                      className={`aspect-[3/2] border border-ink flex flex-col items-center justify-center gap-1 transition ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
+                      aria-pressed={active}
+                    >
+                      <span
+                        className="text-[22px] leading-none"
+                        style={{ color: active ? "#fff" : ACTIVITY_ACCENT[c] }}
+                      >
+                        {ACTIVITY_GLYPH[c]}
+                      </span>
+                      <span className="mono text-[10px] tracking-widest">
+                        {ACTIVITY_LABEL[c]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* DESCRIPTION */}
             <div>
               <label className="mono text-[10px] tracking-widest opacity-70">DESCRIPTION</label>
               <textarea
@@ -137,18 +248,133 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
               />
             </div>
 
+            {/* SPOTS */}
             <div>
               <label className="mono text-[10px] tracking-widest opacity-70">SPOTS</label>
-              <input
-                type="number"
-                min={1}
-                max={99}
-                value={spots}
-                onChange={(e) => setSpots(Number(e.target.value))}
-                className="input mt-1 tabular-nums"
-              />
+              <div className="mt-1 flex flex-wrap gap-2">
+                {SPOT_CHIPS.map((n) => {
+                  const active = !spotsCustom && spots === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => { setSpots(n); setSpotsCustom(false); }}
+                      className={`${chipBase} w-12 text-center ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setSpotsCustom((v) => !v)}
+                  className={`${chipBase} ${spotsCustom ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
+                >
+                  + MORE
+                </button>
+                {spotsCustom && (
+                  <input
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={spots}
+                    onChange={(e) =>
+                      setSpots(Math.max(1, Math.min(99, Number(e.target.value) || 1)))
+                    }
+                    className="input w-20 tabular-nums"
+                    autoFocus
+                  />
+                )}
+              </div>
             </div>
 
+            {/* WHEN — two stage */}
+            <div>
+              <label className="mono text-[10px] tracking-widest opacity-70">
+                WHEN DOES IT START?
+              </label>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {(["today", "tomorrow", "custom"] as DayMode[]).map((d) => {
+                  const active = dayMode === d;
+                  const label =
+                    d === "today" ? "TODAY"
+                    : d === "tomorrow" ? "TOMORROW"
+                    : (active && customDayLabel) || "CUSTOM DAY";
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => {
+                        setDayMode(d);
+                        if (d !== "custom") setCustomDate("");
+                        // reset time when day changes
+                        setHour(null);
+                        setCustomHM("");
+                      }}
+                      className={`${chipBase} ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {dayMode === "custom" && (
+                <input
+                  type="date"
+                  value={customDate}
+                  min={todayValue}
+                  onChange={(e) => { setCustomDate(e.target.value); setHour(null); setCustomHM(""); }}
+                  className="input mt-2 max-w-[200px]"
+                  autoFocus
+                />
+              )}
+
+              {/* Time chips appear once a day is fully chosen */}
+              {dayMode && (dayMode !== "custom" || customDate) && (
+                <div className="mt-3">
+                  <div className="mono text-[10px] tracking-widest opacity-60">
+                    WHAT TIME?
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {hourChips.length === 0 && (
+                      <span className="mono text-[11px] opacity-60">
+                        TOO LATE TODAY — PICK TOMORROW
+                      </span>
+                    )}
+                    {hourChips.map((h) => {
+                      const active = !customHM && hour === h;
+                      return (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => { setHour(h); setCustomHM(""); }}
+                          className={`${chipBase} w-12 text-center tabular-nums ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
+                        >
+                          {String(h).padStart(2, "0")}H
+                        </button>
+                      );
+                    })}
+                    <input
+                      type="time"
+                      value={customHM}
+                      onChange={(e) => { setCustomHM(e.target.value); setHour(null); }}
+                      className="input w-28"
+                      placeholder="HH:MM"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {startsAt && (
+                <p className="mono text-[10px] mt-3 opacity-70">
+                  HAPPENS · {startsLabel(startsAt.getTime())}
+                  <span className="opacity-60"> · HIDES FROM PUBLIC ONCE FULL OR STARTED</span>
+                </p>
+              )}
+            </div>
+
+            {/* JOIN PERMISSION */}
             <div>
               <label className="mono text-[10px] tracking-widest opacity-70">JOIN PERMISSION</label>
               <div className="mt-1 flex">
@@ -169,71 +395,33 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
+            {/* LOCATION */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">WHEN DOES IT START?</label>
-              <div className="mt-1 grid grid-cols-2 gap-2">
-                {chips.map((c) => {
-                  const active = startsAt?.getTime() === c.ts;
-                  return (
-                    <button
-                      key={c.label}
-                      type="button"
-                      onClick={() => setStartsAt(new Date(c.ts))}
-                      className={`px-3 py-2 border border-ink mono text-[10px] tracking-widest text-left ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
-                    >
-                      {c.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-2">
-                <label className="mono text-[10px] tracking-widest opacity-60 block mb-1">
-                  OR PICK A SPECIFIC MOMENT
-                </label>
-                <input
-                  type="datetime-local"
-                  value={startsLocal}
-                  min={minLocal}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setStartsAt(v ? new Date(v) : null);
-                  }}
-                  className="input mt-1"
-                />
-              </div>
-              {startsAt && (
-                <p className="mono text-[10px] mt-2 opacity-70">
-                  HAPPENS · {startsLabel(startsAt.getTime())}
-                  <span className="opacity-50"> · HIDES FROM PUBLIC FEED ONCE FULL OR STARTED</span>
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">LOCATION</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">
+                LOCATION
+                {searching && <span className="ml-2 opacity-60">SEARCHING…</span>}
+              </label>
               <div className="relative">
                 <input
                   value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setPicked(null);
-                  }}
-                  placeholder="Type a quartier — or drop a pin on the map →"
+                  onChange={(e) => { setQuery(e.target.value); setPicked(null); }}
+                  placeholder="Le Comptoir Général, 27 rue Volta, Belleville…"
                   className="input mt-1"
                 />
                 {suggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full bg-paper border border-ink border-t-0 z-20 max-h-56 overflow-y-auto">
-                    {suggestions.map((s) => (
+                  <div className="absolute left-0 right-0 top-full bg-paper border border-ink border-t-0 z-20 max-h-72 overflow-y-auto">
+                    {suggestions.map((s, i) => (
                       <button
-                        key={s.name}
+                        key={`${s.label}-${s.lat}-${s.lng}-${i}`}
                         type="button"
-                        onClick={() => pickQuartier(s)}
-                        className="block w-full text-left px-3 py-2 hover:bg-ink hover:text-paper mono text-[12px] border-b border-rule last:border-b-0"
+                        onClick={() => pickLocation(s)}
+                        className="block w-full text-left px-3 py-2 hover:bg-ink hover:text-paper border-b border-rule last:border-b-0"
                       >
-                        {s.name}
-                        {s.arr && (
-                          <span className="opacity-50 ml-2 text-[10px]">{s.arr}</span>
-                        )}
+                        <div className="font-medium text-[13px] leading-tight">{s.label}</div>
+                        <div className="mono text-[9px] tracking-widest opacity-60 mt-0.5">
+                          {s.source === "quartier" ? "◆ " : "● "}
+                          {s.hint || "PARIS"}
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -244,6 +432,9 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
                   PIN · {latlng.lat.toFixed(4)}, {latlng.lng.toFixed(4)}
                 </div>
               )}
+              <p className="mono text-[10px] mt-1 opacity-50">
+                Real Paris addresses + venues — type a shop, bar, street, quartier.
+              </p>
             </div>
           </div>
 

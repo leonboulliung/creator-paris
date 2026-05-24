@@ -36,7 +36,10 @@ export interface Card {
   location: CardLocation;
   spots: number;
   permission: Permission;
+  /** Author-picked category. Falls back to title-derived activity when null. */
+  category: string | null;
   createdAt: number;
+  /** Repurposed column: when the event actually starts. */
   expiresAt: number;
   durationDays: number;
   archived: boolean;

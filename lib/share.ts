@@ -23,6 +23,7 @@ function drawVibeHero(ctx: CanvasRenderingContext2D, card: Card, height: number)
     title: card.title,
     label: card.location.label,
     hour: parisHourOf(card.createdAt),
+    category: card.category,
   });
   // sky linear gradient
   const angleRad = (v.angle - 90) * (Math.PI / 180);
@@ -497,6 +498,7 @@ export function exportCarnetPrintable(cards: Card[], email: string) {
         title: c.title,
         label: c.location.label,
         hour: parisHourOf(c.createdAt),
+        category: c.category,
       });
       const expiryStr = c.expiresAt
         ? new Date(c.expiresAt).toLocaleString("en-GB", {

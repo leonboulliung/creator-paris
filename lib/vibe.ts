@@ -31,7 +31,7 @@ export function activityFromTitle(title: string): Activity {
   return "default";
 }
 
-const ACTIVITY_ACCENT: Record<Activity, string> = {
+export const ACTIVITY_ACCENT: Record<Activity, string> = {
   film: "#7a1f1f",
   music: "#4b1e7a",
   build: "#c45a14",
@@ -95,8 +95,14 @@ export function computeVibe(input: {
   label: string;
   /** Paris hour-of-day to anchor the palette (0..23). Defaults to current Paris hour. */
   hour?: number;
+  /** Author-picked category — overrides title-derived activity when set. */
+  category?: string | null;
 }): Vibe {
-  const activity = activityFromTitle(input.title);
+  const explicit =
+    input.category && (input.category in ACTIVITY_ACCENT)
+      ? (input.category as Activity)
+      : null;
+  const activity = explicit ?? activityFromTitle(input.title);
   const tod = timeOfDayFromHour(input.hour ?? parisHour());
   const accent = ACTIVITY_ACCENT[activity];
   const pal = TOD_PALETTE[tod];
@@ -145,3 +151,24 @@ export const ACTIVITY_LABEL: Record<Activity, string> = {
   talk: "TALK",
   default: "ONE THING",
 };
+
+/** Glyphs for the category picker. Plain unicode — no emoji. */
+export const ACTIVITY_GLYPH: Record<Activity, string> = {
+  film: "▶",
+  music: "♪",
+  food: "●",
+  art: "◆",
+  walk: "→",
+  read: "■",
+  talk: "◗",
+  build: "+",
+  sport: "▲",
+  default: "○",
+};
+
+/** Order in which categories appear in the picker. */
+export const CATEGORY_ORDER: Activity[] = [
+  "film", "music", "food",
+  "art", "walk", "read",
+  "talk", "build", "sport",
+];

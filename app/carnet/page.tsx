@@ -191,6 +191,7 @@ function TrackRow({
     title: card.title,
     label: card.location.label,
     hour: parisHourOf(card.createdAt),
+    category: card.category,
   });
   const [busy, setBusy] = useState(false);
   const now = Date.now();

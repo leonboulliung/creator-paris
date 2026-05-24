@@ -18,6 +18,7 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
     title: card.title,
     label: card.location.label,
     hour: parisHourOf(card.createdAt),
+    category: card.category,
   });
   const { user } = useUser();
   const mine = user?.id === card.ownerId;

@@ -68,6 +68,7 @@ export default function PostPage() {
     title: card.title,
     label: card.location.label,
     hour: parisHourOf(card.createdAt),
+    category: card.category,
   });
   const mine = !!user && user.id === card.ownerId;
   const joined = !!user && card.joiners.some((j) => j.userId === user.id);
@@ -177,6 +178,7 @@ export default function PostPage() {
         title={card.title}
         label={card.location.label}
         hour={parisHourOf(card.createdAt)}
+        category={card.category}
         className="h-[42vh] sm:h-[52vh] border-b border-ink"
       >
         <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-8">
