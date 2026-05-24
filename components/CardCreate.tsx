@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ACTIVITY_ACCENT, ACTIVITY_GLYPH, ACTIVITY_LABEL, CATEGORY_ORDER, computeVibe, type Activity } from "@/lib/vibe";
 import type { Permission } from "@/lib/types";
@@ -163,9 +164,11 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
 
   const canSubmit = !!title.trim() && !!latlng && !!startsAt && !submitting;
   const chipBase = "px-3 py-2 border border-ink mono text-[10px] tracking-widest";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  return (
-    <div className="fixed inset-0 z-40 bg-paper flex flex-col">
+  const node = (
+    <div className="fixed inset-0 z-[1200] bg-paper flex flex-col">
       <div
         className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 shrink-0 safe-top"
       >
@@ -487,4 +490,9 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
       </div>
     </div>
   );
+
+  // Portal to document.body so the modal escapes any parent stacking
+  // context (iOS Safari traps fixed children inside scrollable mains).
+  if (!mounted) return null;
+  return createPortal(node, document.body);
 }

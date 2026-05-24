@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { SignUpButton, useUser } from "@clerk/nextjs";
@@ -396,8 +397,8 @@ export default function PostPage() {
       </div>
       </main>
 
-      {editing && draft && (
-        <div className="fixed inset-0 z-40 bg-paper flex flex-col">
+      {editing && draft && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[1200] bg-paper flex flex-col">
           <div className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 shrink-0 safe-top">
             <div className="mono text-[10px] tracking-widest opacity-70">EDIT · ONE THING</div>
             <button onClick={() => setEditing(false)} className="mono text-[11px] tracking-widest hover:underline">
@@ -458,7 +459,8 @@ export default function PostPage() {
             <button onClick={() => setEditing(false)} className="btn ghost" disabled={busy}>Cancel</button>
             <button onClick={saveEdit} className="btn" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

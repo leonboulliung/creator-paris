@@ -37,7 +37,6 @@ body {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
 }
 .app-shell > main.no-scroll {
   overflow: hidden;
