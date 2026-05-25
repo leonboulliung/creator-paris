@@ -123,7 +123,7 @@ export default function CarnetPage() {
 
         {tab === "map" && (
           <div className="relative h-full">
-            <ParisMap cards={mapCards} />
+            <ParisMap cards={mapCards} gestureHandling={false} />
             <div
               className="absolute left-3 z-[400] mono text-[10px] tracking-widest bg-paper border border-ink px-2 py-1"
               style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}

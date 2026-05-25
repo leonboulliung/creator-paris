@@ -1,12 +1,16 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
+import "leaflet-gesture-handling/dist/leaflet-gesture-handling.css";
 import { useEffect, useRef, useState } from "react";
 import type * as L from "leaflet";
 import { PARIS_BOUNDS, PARIS_CENTER } from "@/lib/quartiers";
 import type { Card } from "@/lib/types";
 import { parisHour } from "@/lib/time";
 import { TOD_LABEL, timeOfDayFromHour, type TimeOfDay } from "@/lib/vibe";
+
+// Module-scope flag — the plugin only needs registering once per page.
+let gestureHandlerRegistered = false;
 
 interface MapPin {
   id: string;
@@ -25,6 +29,12 @@ interface Props {
   freshIds?: Set<string>;
   highlightId?: string;
   className?: string;
+  /**
+   * When true (default), single-finger touch on mobile shows
+   * "Use two fingers to move the map" and lets the page scroll past.
+   * Set false for full-screen map views where the map IS the page.
+   */
+  gestureHandling?: boolean;
 }
 
 export function ParisMap({
@@ -37,6 +47,7 @@ export function ParisMap({
   freshIds,
   highlightId,
   className = "",
+  gestureHandling = true,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -75,6 +86,29 @@ export function ParisMap({
       const leaflet = ((mod as unknown as { default?: typeof L }).default ?? (mod as unknown as typeof L)) as typeof L;
       if (!mounted || !ref.current) return;
       LRef.current = leaflet;
+
+      // Register the gestureHandling plugin once per page. addInitHook adds a
+      // global handler that every subsequent leaflet.map(…) instance will
+      // pick up if it passes { gestureHandling: true }.
+      if (gestureHandling && !gestureHandlerRegistered) {
+        try {
+          const gh = await import("leaflet-gesture-handling");
+          const Handler =
+            (gh as unknown as { GestureHandling?: unknown }).GestureHandling ??
+            (gh as unknown as { default?: unknown }).default;
+          if (Handler) {
+            // 3-arg form of addInitHook: (methodName, args...) — runs
+            // map.addHandler("gestureHandling", Handler) on every map init.
+            // Not in Leaflet's TS signatures, so cast through.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (leaflet.Map as any).addInitHook("addHandler", "gestureHandling", Handler);
+            gestureHandlerRegistered = true;
+          }
+        } catch {
+          // plugin failed to load — fall through, map still works without
+        }
+      }
+
       const map = leaflet.map(ref.current, {
         center: PARIS_CENTER,
         zoom: 12,
@@ -84,7 +118,20 @@ export function ParisMap({
         maxBoundsViscosity: 0.85,
         minZoom: 11,
         maxZoom: 17,
-      });
+        ...(gestureHandling
+          ? ({
+              gestureHandling: true,
+              gestureHandlingOptions: {
+                text: {
+                  touch: "Use two fingers to move the map",
+                  scroll: "Use ⌘ + scroll to zoom",
+                  scrollMac: "Use ⌘ + scroll to zoom",
+                },
+                duration: 1200,
+              },
+            } as unknown as Record<string, unknown>)
+          : {}),
+      } as L.MapOptions);
       // Base tiles: Positron without labels (clean B&W substrate).
       leaflet
         .tileLayer(

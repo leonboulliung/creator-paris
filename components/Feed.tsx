@@ -76,6 +76,7 @@ export function Feed({ view }: { view: "feed" | "map" }) {
           freshIds={freshIds}
           onSelectCard={(id) => router.push(`/post/${id}`)}
           height="100%"
+          gestureHandling={false}
         />
         <div
           className="absolute left-3 z-[400] mono text-[10px] tracking-widest bg-paper border border-ink px-2 py-1 flex items-center gap-2 max-w-[calc(100%-24px)] overflow-hidden"
