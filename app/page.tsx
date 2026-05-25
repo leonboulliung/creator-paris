@@ -12,6 +12,11 @@ import { useRealtimeCards } from "@/lib/realtime";
 import type { Card } from "@/lib/types";
 import { useIsDesktop } from "@/lib/hooks";
 
+// Keep these in lockstep with FeedPanel's own widths/heights.
+const PANEL_DESKTOP_EXPANDED = 380;
+const PANEL_DESKTOP_COLLAPSED = 52;
+const PANEL_MOBILE_PEEK = 52;
+
 export default function HomePage() {
   const router = useRouter();
   const [composing, setComposing] = useState(false);
@@ -19,15 +24,13 @@ export default function HomePage() {
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
   const isDesktop = useIsDesktop();
-  // Panel defaults: open on desktop (the feed lives in a sidebar), closed on
-  // mobile (the map is primary; user taps LIST to expand the bottom-sheet).
-  const [panelOpen, setPanelOpen] = useState(false);
+  // Default: expanded on desktop (plenty of room), peek on mobile.
+  const [panelExpanded, setPanelExpanded] = useState(false);
   const [panelInitialized, setPanelInitialized] = useState(false);
 
-  // Set initial panel state once we know the viewport.
   useEffect(() => {
     if (panelInitialized) return;
-    setPanelOpen(isDesktop);
+    setPanelExpanded(isDesktop);
     setPanelInitialized(true);
   }, [isDesktop, panelInitialized]);
 
@@ -69,17 +72,23 @@ export default function HomePage() {
 
   useRealtimeCards(refresh);
 
-  // Hide the FAB while the mobile bottom-sheet is open — it would float over
-  // the panel and visually compete with CLOSE / list scrolling.
-  const fabHidden = composing || (!isDesktop && panelOpen);
+  // Hide FAB while the mobile bottom-sheet is expanded — it would float on
+  // top of the open list and visually fight with CLOSE / list scrolling.
+  const fabHidden = composing || (!isDesktop && panelExpanded);
+
+  // FAB sits "off the panel": shifts left by panel width on desktop, lifts
+  // above the peek strip on mobile so it always clears the docked list.
+  const fabShiftX = isDesktop
+    ? panelExpanded
+      ? PANEL_DESKTOP_EXPANDED
+      : PANEL_DESKTOP_COLLAPSED
+    : 0;
+  const fabBottomExtra = isDesktop ? 0 : PANEL_MOBILE_PEEK;
 
   return (
     <>
       <div className="app-shell">
-        <Header
-          panelOpen={panelOpen}
-          onTogglePanel={composing ? undefined : () => setPanelOpen((v) => !v)}
-        />
+        <Header />
         <main className="no-scroll relative">
           {composing ? (
             <CardCreate onClose={() => setComposing(false)} />
@@ -92,21 +101,9 @@ export default function HomePage() {
                 height="100%"
                 gestureHandling={false}
               />
-              {!panelOpen && (
-                <button
-                  onClick={() => setPanelOpen(true)}
-                  className="absolute left-3 z-[500] mono text-[10px] tracking-widest bg-paper border border-ink px-2.5 py-1.5 hover:bg-ink hover:text-paper transition"
-                  style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
-                  aria-label="Open list"
-                >
-                  <span className="tabular-nums">{cards.length}</span>
-                  <span className="opacity-60"> ACTIVE </span>
-                  <span>· OPEN LIST →</span>
-                </button>
-              )}
               <FeedPanel
-                open={panelOpen}
-                onClose={() => setPanelOpen(false)}
+                expanded={panelExpanded}
+                onExpandedChange={setPanelExpanded}
                 cards={cards}
                 loaded={loaded}
               />
@@ -122,8 +119,8 @@ export default function HomePage() {
               onClick={() => setComposing(true)}
               className="fixed right-4 sm:right-5 z-[1000] bg-ink text-paper w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 mono text-[12px] tracking-widest shadow-2xl hover:scale-[1.02] transition-transform duration-300 ease-out border border-paper/10"
               style={{
-                bottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)",
-                transform: isDesktop && panelOpen ? "translateX(-380px)" : undefined,
+                bottom: `calc(env(safe-area-inset-bottom, 0px) + ${20 + fabBottomExtra}px)`,
+                transform: fabShiftX ? `translateX(-${fabShiftX}px)` : undefined,
               }}
               aria-label="Post one thing"
             >
@@ -137,8 +134,8 @@ export default function HomePage() {
               <button
                 className="fixed right-4 sm:right-5 z-[1000] bg-ink text-paper w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 mono text-[12px] tracking-widest shadow-2xl hover:scale-[1.02] transition-transform duration-300 ease-out border border-paper/10"
                 style={{
-                  bottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)",
-                  transform: isDesktop && panelOpen ? "translateX(-380px)" : undefined,
+                  bottom: `calc(env(safe-area-inset-bottom, 0px) + ${20 + fabBottomExtra}px)`,
+                  transform: fabShiftX ? `translateX(-${fabShiftX}px)` : undefined,
                 }}
                 aria-label="Sign up to post"
               >

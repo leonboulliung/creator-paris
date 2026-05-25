@@ -8,13 +8,7 @@ import { parisNow, parisTimeOfDay, formatParisClock } from "@/lib/time";
 import { TOD_LABEL } from "@/lib/vibe";
 import { Ticker } from "./Ticker";
 
-export function Header({
-  panelOpen,
-  onTogglePanel,
-}: {
-  panelOpen?: boolean;
-  onTogglePanel?: () => void;
-}) {
+export function Header() {
   const [clock, setClock] = useState("");
 
   useEffect(() => {
@@ -30,19 +24,24 @@ export function Header({
   // The toggle button: on profile-ish routes we send the user back to the
   // city layer; everywhere else we offer the profile.
   const pathname = usePathname() || "/";
-  const onProfileSurface = pathname.startsWith("/carnet") || pathname.startsWith("/u/");
+  const onProfileSurface =
+    pathname.startsWith("/carnet") || pathname.startsWith("/u/");
   const altDest = onProfileSurface ? "/" : "/carnet";
   const altLabel = onProfileSurface ? "PARIS" : "PROFILE";
 
-  const showListToggle = !!onTogglePanel;
-  const listLabel = panelOpen ? "HIDE LIST" : "LIST";
+  // Only the post detail page has its own back-flow; everywhere else we want
+  // the mobile profile-switch row visible.
+  const showMobileSwitchRow = !pathname.startsWith("/post/");
 
   return (
     <header className="shrink-0 z-50 bg-paper border-b border-ink safe-top">
       {/* Row 1 — logo · clock · auth */}
       <div className="flex items-center px-3 sm:px-6 py-2 sm:py-3 gap-2 sm:gap-4">
         <Link href="/" className="flex items-center gap-3 shrink-0 min-w-0">
-          <span className="cp-pulse-dot" style={{ "--pin-color": "#3a5a96" } as React.CSSProperties} />
+          <span
+            className="cp-pulse-dot"
+            style={{ "--pin-color": "#3a5a96" } as React.CSSProperties}
+          />
           <span className="font-black tracking-tightest text-[14px] sm:text-[17px] md:text-[19px] leading-none truncate">
             CREATOR<span className="opacity-60">.</span>PARIS
           </span>
@@ -58,19 +57,8 @@ export function Header({
           <span className="hidden sm:inline opacity-80 truncate">{todLabel}</span>
         </div>
 
-        {/* Desktop: LIST toggle + profile switch + avatar */}
+        {/* Desktop: profile switch + avatar */}
         <div className="hidden sm:flex items-center gap-2 shrink-0">
-          {showListToggle && (
-            <button
-              onClick={onTogglePanel}
-              className={`mono text-[10px] tracking-widest px-3 py-1.5 border border-ink transition ${
-                panelOpen ? "bg-ink text-paper" : "bg-paper text-ink hover:bg-ink hover:text-paper"
-              }`}
-              aria-pressed={panelOpen}
-            >
-              {listLabel}
-            </button>
-          )}
           <SignedIn>
             <Link
               href={altDest}
@@ -91,7 +79,7 @@ export function Header({
           </SignedOut>
         </div>
 
-        {/* Mobile: just avatar + signin */}
+        {/* Mobile: avatar + sign-in only */}
         <div className="flex sm:hidden items-center gap-2 shrink-0">
           <SignedIn>
             <div className="[&_.cl-userButtonAvatarBox]:!w-8 [&_.cl-userButtonAvatarBox]:!h-8 [&_.cl-userButtonAvatarBox]:!rounded-none [&_.cl-userButtonAvatarBox]:!border [&_.cl-userButtonAvatarBox]:!border-ink">
@@ -108,25 +96,15 @@ export function Header({
         </div>
       </div>
 
-      {/* Row 2 (mobile only) — LIST toggle + profile switch */}
-      {showListToggle && (
-        <div className="flex sm:hidden border-t border-ink mono text-[11px] tracking-widest">
-          <button
-            onClick={onTogglePanel}
-            className={`flex-1 py-2.5 ${panelOpen ? "bg-ink text-paper" : "bg-paper text-ink"}`}
-            aria-pressed={panelOpen}
-          >
-            {listLabel}
-          </button>
-          <SignedIn>
-            <Link
-              href={altDest}
-              className="flex-1 py-2.5 border-l border-ink text-center"
-            >
+      {/* Row 2 (mobile only) — full-width profile/paris switch for signed-in users. */}
+      {showMobileSwitchRow && (
+        <SignedIn>
+          <div className="flex sm:hidden border-t border-ink mono text-[11px] tracking-widest">
+            <Link href={altDest} className="flex-1 py-2.5 text-center">
               {altLabel}
             </Link>
-          </SignedIn>
-        </div>
+          </div>
+        </SignedIn>
       )}
 
       <Ticker />

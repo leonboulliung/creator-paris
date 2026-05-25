@@ -8,20 +8,27 @@ import { TOD_LABEL } from "@/lib/vibe";
 import { useIsDesktop } from "@/lib/hooks";
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
+  expanded: boolean;
+  onExpandedChange: (v: boolean) => void;
   cards: Card[];
   loaded: boolean;
 }
 
 /**
- * The feed list as an overlay panel on top of the always-on Paris map.
- * Desktop: 380px sidebar from the right.
- * Mobile: ~85vh bottom-sheet.
+ * The feed list as a permanently docked object on the Paris map.
  *
- * Closing returns the user to the bare map.
+ * Desktop — docked on the right edge:
+ *   • Expanded: 380px panel with the full list.
+ *   • Collapsed: 52px strip with vertical "n ACTIVE — OPEN LIST" tab.
+ *
+ * Mobile — docked at the bottom edge:
+ *   • Expanded: 85dvh bottom-sheet with the full list.
+ *   • Peek (collapsed): 52px strip showing clock · TOD · n ACTIVE + tap hint.
+ *
+ * Both viewports keep the panel always visible — it is part of the map UI,
+ * not an overlay you have to summon. Expand and collapse, never hide.
  */
-export function FeedPanel({ open, onClose, cards, loaded }: Props) {
+export function FeedPanel({ expanded, onExpandedChange, cards, loaded }: Props) {
   const [clock, setClock] = useState("--:--");
   const isDesktop = useIsDesktop();
 
@@ -36,22 +43,22 @@ export function FeedPanel({ open, onClose, cards, loaded }: Props) {
   }, []);
 
   const tod = parisTimeOfDay();
+  const countLabel = `${cards.length} ACTIVE`;
 
-  const headerRow = (
+  // Shared row for expanded headers (desktop + mobile).
+  const expandedHeaderRow = (closeLabel: string) => (
     <div className="shrink-0 border-b border-ink px-4 py-3 flex items-center gap-2 bg-paper">
       <span className="mono text-[10px] tracking-widest tabular-nums">{clock}</span>
       <span className="opacity-40">·</span>
       <span className="mono text-[10px] tracking-widest">{TOD_LABEL[tod]}</span>
       <span className="opacity-40">·</span>
-      <span className="mono text-[10px] tracking-widest tabular-nums">
-        {cards.length} ACTIVE
-      </span>
+      <span className="mono text-[10px] tracking-widest tabular-nums">{countLabel}</span>
       <button
-        onClick={onClose}
+        onClick={() => onExpandedChange(false)}
         className="ml-auto mono text-[10px] tracking-widest px-2 py-1 border border-ink hover:bg-ink hover:text-paper transition"
-        aria-label="Close list"
+        aria-label="Collapse list"
       >
-        {isDesktop ? "HIDE ›" : "CLOSE ×"}
+        {closeLabel}
       </button>
     </div>
   );
@@ -89,39 +96,74 @@ export function FeedPanel({ open, onClose, cards, loaded }: Props) {
   if (isDesktop) {
     return (
       <aside
-        className={`absolute top-0 right-0 bottom-0 w-[380px] z-[600] flex flex-col bg-paper border-l border-ink shadow-[0_0_40px_rgba(0,0,0,0.08)] transition-transform duration-300 ease-out ${
-          open ? "translate-x-0" : "translate-x-full"
+        className={`absolute top-0 right-0 bottom-0 z-[600] flex flex-col bg-paper border-l border-ink shadow-[0_0_40px_rgba(0,0,0,0.08)] transition-[width] duration-300 ease-out overflow-hidden ${
+          expanded ? "w-[380px]" : "w-[52px]"
         }`}
-        aria-hidden={!open}
+        aria-label="Active cards"
       >
-        {headerRow}
-        {listBody}
+        {expanded ? (
+          <>
+            {expandedHeaderRow("HIDE ›")}
+            {listBody}
+          </>
+        ) : (
+          <button
+            onClick={() => onExpandedChange(true)}
+            className="w-full h-full flex flex-col items-center justify-between py-4 hover:bg-ink/[0.04] transition"
+            aria-label="Expand list"
+          >
+            <span className="mono text-[14px] leading-none">‹</span>
+            <span
+              className="mono text-[10px] tracking-widest whitespace-nowrap select-none"
+              style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+            >
+              {countLabel} &nbsp;·&nbsp; OPEN LIST
+            </span>
+            <span className="mono text-[14px] leading-none">‹</span>
+          </button>
+        )}
       </aside>
     );
   }
 
-  // Mobile bottom-sheet
+  // Mobile — docked at the bottom edge.
   return (
     <>
-      {open && (
+      {expanded && (
         <div
           className="absolute inset-0 z-[590] bg-ink/10"
-          onClick={onClose}
+          onClick={() => onExpandedChange(false)}
           aria-hidden
         />
       )}
       <div
-        className={`absolute inset-x-0 bottom-0 z-[600] flex flex-col bg-paper border-t border-ink shadow-[0_-8px_30px_rgba(0,0,0,0.18)] transition-transform duration-300 ease-out ${
-          open ? "translate-y-0" : "translate-y-full"
-        }`}
-        style={{ height: "85dvh" }}
-        aria-hidden={!open}
+        className="absolute inset-x-0 bottom-0 z-[600] flex flex-col bg-paper border-t border-ink shadow-[0_-8px_30px_rgba(0,0,0,0.18)] transition-[height] duration-300 ease-out overflow-hidden"
+        style={{ height: expanded ? "85dvh" : "52px" }}
+        aria-label="Active cards"
       >
-        <div className="flex justify-center pt-2 pb-1">
-          <div className="h-1 w-10 bg-ink/30 rounded-full" />
-        </div>
-        {headerRow}
-        {listBody}
+        {expanded ? (
+          <>
+            <div className="flex justify-center pt-2 pb-1 shrink-0">
+              <div className="h-1 w-10 bg-ink/30 rounded-full" />
+            </div>
+            {expandedHeaderRow("CLOSE ↓")}
+            {listBody}
+          </>
+        ) : (
+          <button
+            onClick={() => onExpandedChange(true)}
+            className="w-full h-full px-4 flex items-center gap-2 relative"
+            aria-label="Expand list"
+          >
+            <div className="absolute left-1/2 top-1.5 -translate-x-1/2 h-1 w-10 bg-ink/30 rounded-full" />
+            <span className="mono text-[10px] tracking-widest tabular-nums">{clock}</span>
+            <span className="opacity-40">·</span>
+            <span className="mono text-[10px] tracking-widest">{TOD_LABEL[tod]}</span>
+            <span className="opacity-40">·</span>
+            <span className="mono text-[10px] tracking-widest tabular-nums">{countLabel}</span>
+            <span className="ml-auto mono text-[10px] tracking-widest">OPEN ↑</span>
+          </button>
+        )}
       </div>
     </>
   );
