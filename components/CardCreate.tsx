@@ -174,7 +174,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-[1200] flex sm:items-center sm:justify-center sm:bg-ink/60 sm:p-6">
       <div className="bg-paper flex flex-col w-full h-full sm:max-w-[1100px] sm:max-h-[90vh] sm:h-auto sm:border sm:border-ink sm:shadow-2xl">
       <div
-        className="relative flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 shrink-0 safe-top"
+        className="relative flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top"
       >
         <div className="mono text-[10px] tracking-widest opacity-70">NEW · ONE THING</div>
         <div className="flex items-center gap-3">
