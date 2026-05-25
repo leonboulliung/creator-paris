@@ -223,15 +223,12 @@ export function ParisMap({
     layerRef.current.clearLayers();
     for (const c of cards) {
       const isFresh = freshIds?.has(c.id);
-      const inner = cardColor(c);
-      const outer = categoryColor(c);
-      // box-shadow rings (in order): white sep, category ring, white halo
-      const shadow = `0 0 0 1.5px #ffffff, 0 0 0 3.5px ${outer}, 0 0 0 5px rgba(255,255,255,0.95)`;
+      const color = cardColor(c);
       const icon = L.divIcon({
         className: "",
-        html: `<div class="cp-pin ${isFresh ? "fresh" : ""}" style="background:${inner}; box-shadow:${shadow}"></div>`,
-        iconSize: [10, 10],
-        iconAnchor: [5, 5],
+        html: `<div class="cp-pin ${isFresh ? "fresh" : ""}" style="--pin-color:${color}"></div>`,
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
       });
       const m = L.marker([c.location.lat, c.location.lng], { icon, riseOnHover: true });
       // Editorial title tooltip on hover (desktop).
@@ -261,14 +258,12 @@ export function ParisMap({
       pickedMarkerRef.current = null;
     }
     if (pickedLatLng) {
-      const inner = pickedColors?.inner || "#ffffff";
-      const outer = pickedColors?.outer || "#0a0a0a";
-      const shadow = `0 0 0 1.5px #ffffff, 0 0 0 3.5px ${outer}, 0 0 0 5px rgba(255,255,255,0.95)`;
+      const color = pickedColors?.inner || "#0a0a0a";
       const icon = L.divIcon({
         className: "",
-        html: `<div class="cp-pin fresh" style="background:${inner}; box-shadow:${shadow}"></div>`,
-        iconSize: [10, 10],
-        iconAnchor: [5, 5],
+        html: `<div class="cp-pin fresh" style="--pin-color:${color}"></div>`,
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
       });
       const m = L.marker([pickedLatLng.lat, pickedLatLng.lng], {
         icon,

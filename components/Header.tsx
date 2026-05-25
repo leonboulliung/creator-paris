@@ -30,8 +30,8 @@ export function Header({
     <header className="shrink-0 z-50 bg-paper border-b border-ink safe-top">
       {/* Row 1 — logo · clock · auth */}
       <div className="flex items-center px-3 sm:px-6 py-2 sm:py-3 gap-2 sm:gap-4">
-        <Link href="/" className="flex items-center gap-2 group shrink-0 min-w-0">
-          <span className="block w-2 h-2 sm:w-2.5 sm:h-2.5 bg-ink rounded-full group-hover:animate-pulseRing shrink-0" />
+        <Link href="/" className="flex items-center gap-3 shrink-0 min-w-0">
+          <span className="cp-pulse-dot" style={{ "--pin-color": "#3a5a96" } as React.CSSProperties} />
           <span className="font-black tracking-tightest text-[14px] sm:text-[17px] md:text-[19px] leading-none truncate">
             CREATOR<span className="opacity-60">.</span>PARIS
           </span>

@@ -175,25 +175,51 @@ body {
   display: none;
 }
 
-/* Custom pin — two-ring structure:
-   inner disc (user's custom color) + outer ring (category color) + white halo. */
+/* Map pin — clean colored disc with a same-color radar pulse.
+   Color is set per-pin via inline style on --pin-color. */
 .cp-pin {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: #0a0a0a;
-  /* box-shadow stacks: white inner separator, category ring, white outer halo */
-  box-shadow:
-    0 0 0 1.5px #ffffff,
-    0 0 0 3.5px #0a0a0a,
-    0 0 0 5px rgba(255,255,255,0.95);
-  transform: translate(-5px, -5px);
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--pin-color, #0a0a0a);
+  box-shadow: 0 0 0 2.5px #ffffff;
+  transform: translate(-6px, -6px);
   position: relative;
 }
-.cp-pin.fresh::after {
+.cp-pin::after {
   content: "";
-  position: absolute; inset: -7px;
+  position: absolute; inset: 0;
   border-radius: 50%;
-  border: 2px solid rgba(10,10,10,0.55);
-  animation: pulseRing 1.4s ease-out infinite;
+  background: var(--pin-color, #0a0a0a);
+  opacity: 0;
+  z-index: -1;
+  animation: cpPulse 2.4s ease-out infinite;
+}
+/* freshly-added pins pulse faster for a short time so they catch the eye */
+.cp-pin.fresh::after {
+  animation: cpPulse 1.2s ease-out infinite;
+}
+@keyframes cpPulse {
+  0%   { transform: scale(0.6); opacity: 0.55; }
+  100% { transform: scale(4);   opacity: 0; }
+}
+
+/* Reusable pulse-dot — used in the header next to the wordmark. */
+.cp-pulse-dot {
+  position: relative;
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--pin-color, #3a5a96);
+  box-shadow: 0 0 0 1.5px #ffffff;
+  flex-shrink: 0;
+}
+.cp-pulse-dot::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: var(--pin-color, #3a5a96);
+  opacity: 0;
+  z-index: -1;
+  animation: cpPulse 2.4s ease-out infinite;
 }
 @keyframes pulseRing {
   0% { transform: scale(1); opacity: 0.9; }
