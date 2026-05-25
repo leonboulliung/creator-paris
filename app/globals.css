@@ -208,35 +208,30 @@ body {
 }
 
 /* Reusable pulse-dot — used in the header next to the wordmark.
-   Wrapper centers the dot inside a fixed box so pulse + dot always
-   share the same geometric center, independent of flex layout
-   or sub-pixel rounding around the wrapper. */
+   Grid layout with place-items:center ensures the solid dot and the
+   pulse ring always occupy the exact same cell at the wrapper's
+   geometric center. No margin math, no sub-pixel drift. */
 .cp-pulse-dot {
   position: relative;
-  display: inline-block;
+  display: inline-grid;
+  place-items: center;
   width: 14px; height: 14px;
   flex-shrink: 0;
   vertical-align: middle;
 }
-.cp-pulse-dot::before {
+.cp-pulse-dot::before,
+.cp-pulse-dot::after {
   content: "";
-  position: absolute;
-  top: 50%; left: 50%;
+  grid-area: 1 / 1;
   width: 10px; height: 10px;
-  margin: -5px 0 0 -5px;
   border-radius: 50%;
   background: var(--pin-color, #3a5a96);
+}
+.cp-pulse-dot::before {
   box-shadow: 0 0 0 1.5px #ffffff;
   z-index: 1;
 }
 .cp-pulse-dot::after {
-  content: "";
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 10px; height: 10px;
-  margin: -5px 0 0 -5px;
-  border-radius: 50%;
-  background: var(--pin-color, #3a5a96);
   opacity: 0;
   z-index: 0;
   pointer-events: none;
