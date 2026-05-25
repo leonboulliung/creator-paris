@@ -6,8 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import type * as L from "leaflet";
 import { PARIS_BOUNDS, PARIS_CENTER } from "@/lib/quartiers";
 import type { Card } from "@/lib/types";
-import { parisHour } from "@/lib/time";
-import { TOD_LABEL, timeOfDayFromHour, type TimeOfDay } from "@/lib/vibe";
+import { parisTimeOfDay } from "@/lib/time";
+import { TOD_LABEL, type TimeOfDay } from "@/lib/vibe";
 import { cardColor, categoryColor } from "@/lib/color";
 
 // Module-scope flag — the plugin only needs registering once per page.
@@ -63,14 +63,14 @@ export function ParisMap({
   const [ready, setReady] = useState(false);
   const [preview, setPreview] = useState<{ card: Card; x: number; y: number } | null>(null);
   const [tod, setTod] = useState<TimeOfDay>(() =>
-    typeof window === "undefined" ? "midday" : timeOfDayFromHour(parisHour()),
+    typeof window === "undefined" ? "midday" : parisTimeOfDay(),
   );
 
-  // Re-check the Paris time-of-day every minute so the map slowly drifts
-  // through dawn → midday → golden → night with the actual city.
+  // Re-check the real Paris sun-derived time-of-day every minute so the map
+  // drifts through dawn → midday → golden → night with actual sun position.
   useEffect(() => {
     const tick = () => {
-      const next = timeOfDayFromHour(parisHour());
+      const next = parisTimeOfDay();
       setTod((prev) => (prev === next ? prev : next));
     };
     tick();

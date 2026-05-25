@@ -7,8 +7,8 @@ import { useRealtimeCards } from "@/lib/realtime";
 import type { Card } from "@/lib/types";
 import { CardItem } from "./CardItem";
 import { ParisMap } from "./ParisMap";
-import { formatParisClock, parisHour, parisNow } from "@/lib/time";
-import { TOD_LABEL, timeOfDayFromHour } from "@/lib/vibe";
+import { formatParisClock, parisNow, parisTimeOfDay } from "@/lib/time";
+import { TOD_LABEL } from "@/lib/vibe";
 
 export function Feed({ view }: { view: "feed" | "map" }) {
   const router = useRouter();
@@ -27,7 +27,7 @@ export function Feed({ view }: { view: "feed" | "map" }) {
     return () => window.clearInterval(id);
   }, []);
 
-  const tod = timeOfDayFromHour(parisHour());
+  const tod = parisTimeOfDay();
 
   const refresh = useCallback(() => {
     fetchActiveCards()

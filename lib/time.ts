@@ -104,6 +104,14 @@ export function parisHour(): number {
   return parisNow().getHours();
 }
 
+import { PARIS_CENTER } from "./quartiers";
+import { timeOfDayFromSun, type TimeOfDay } from "./vibe";
+
+/** Real-time astronomical time-of-day for Paris (uses SunCalc). */
+export function parisTimeOfDay(now: Date = new Date()): TimeOfDay {
+  return timeOfDayFromSun(now, PARIS_CENTER[0], PARIS_CENTER[1]);
+}
+
 export function parisHourOf(ts: number): number {
   const h = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Paris",

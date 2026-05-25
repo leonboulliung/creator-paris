@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
-import { parisHour, parisNow, formatParisClock } from "@/lib/time";
-import { TOD_LABEL, timeOfDayFromHour } from "@/lib/vibe";
+import { parisNow, parisTimeOfDay, formatParisClock } from "@/lib/time";
+import { TOD_LABEL } from "@/lib/vibe";
 import { Ticker } from "./Ticker";
 
 export function Header({
@@ -24,7 +24,7 @@ export function Header({
     return () => window.clearInterval(id);
   }, []);
 
-  const todLabel = TOD_LABEL[timeOfDayFromHour(parisHour())];
+  const todLabel = TOD_LABEL[parisTimeOfDay()];
   const shortClock = clock ? clock.slice(0, 5) : "--:--";
 
   // The toggle button: on profile-ish routes we send the user back to the

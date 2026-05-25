@@ -67,6 +67,50 @@ export function timeOfDayFromHour(h: number = parisHour()): TimeOfDay {
   return "night";
 }
 
+/**
+ * Astronomical time-of-day for a specific location, derived from the
+ * sun's real position. Uses SunCalc to get today's twilight + golden
+ * hour + sunrise/sunset moments, then maps the current instant onto
+ * our six-state palette.
+ *
+ * Falls back to the hour-based mapping for poles or unparseable dates.
+ */
+export function timeOfDayFromSun(
+  now: Date,
+  lat: number,
+  lng: number,
+): TimeOfDay {
+  // SunCalc is CJS so we lazy-require inside the function to keep the
+  // module ESM-importable on the server.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const SunCalc = require("suncalc") as typeof import("suncalc");
+  const t = SunCalc.getTimes(now, lat, lng);
+  const ms = now.getTime();
+
+  const dawn = t.dawn.getTime();
+  const dusk = t.dusk.getTime();
+  const sunriseEnd = t.sunriseEnd.getTime();
+  const solarNoon = t.solarNoon.getTime();
+  const goldenHour = t.goldenHour.getTime(); // evening golden begins
+  const sunset = t.sunset.getTime();
+
+  if (
+    Number.isNaN(dawn) || Number.isNaN(dusk) ||
+    Number.isNaN(sunriseEnd) || Number.isNaN(solarNoon) ||
+    Number.isNaN(goldenHour) || Number.isNaN(sunset)
+  ) {
+    return timeOfDayFromHour(now.getHours());
+  }
+
+  if (ms < dawn) return "night";
+  if (ms < sunriseEnd) return "dawn";
+  if (ms < solarNoon) return "morning";
+  if (ms < goldenHour) return "midday";
+  if (ms < sunset) return "golden";
+  if (ms < dusk) return "evening";
+  return "night";
+}
+
 // Hash a string to a stable 0..1
 function hash01(s: string): number {
   let h = 2166136261;
