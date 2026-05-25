@@ -186,11 +186,16 @@ body {
 }
 .cp-pin::after {
   content: "";
-  position: absolute; inset: 0;
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 12px; height: 12px;
+  margin: -6px 0 0 -6px;
   border-radius: 50%;
   background: var(--pin-color, #0a0a0a);
   opacity: 0;
   z-index: -1;
+  pointer-events: none;
+  transform-origin: 50% 50%;
   animation: cpPulse 2.4s ease-out infinite;
 }
 /* freshly-added pins pulse faster for a short time so they catch the eye */
@@ -202,23 +207,40 @@ body {
   100% { transform: scale(4);   opacity: 0; }
 }
 
-/* Reusable pulse-dot — used in the header next to the wordmark. */
+/* Reusable pulse-dot — used in the header next to the wordmark.
+   Wrapper centers the dot inside a fixed box so pulse + dot always
+   share the same geometric center, independent of flex layout
+   or sub-pixel rounding around the wrapper. */
 .cp-pulse-dot {
   position: relative;
   display: inline-block;
+  width: 14px; height: 14px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.cp-pulse-dot::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
   width: 10px; height: 10px;
+  margin: -5px 0 0 -5px;
   border-radius: 50%;
   background: var(--pin-color, #3a5a96);
   box-shadow: 0 0 0 1.5px #ffffff;
-  flex-shrink: 0;
+  z-index: 1;
 }
 .cp-pulse-dot::after {
   content: "";
-  position: absolute; inset: 0;
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 10px; height: 10px;
+  margin: -5px 0 0 -5px;
   border-radius: 50%;
   background: var(--pin-color, #3a5a96);
   opacity: 0;
-  z-index: -1;
+  z-index: 0;
+  pointer-events: none;
+  transform-origin: 50% 50%;
   animation: cpPulse 2.4s ease-out infinite;
 }
 @keyframes pulseRing {
