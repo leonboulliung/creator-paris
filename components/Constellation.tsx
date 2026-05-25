@@ -1,7 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type * as L from "leaflet";
 import type { TrackEntry } from "@/lib/types";
 import { PARIS_BOUNDS } from "@/lib/quartiers";
@@ -10,21 +10,54 @@ import { cardColor, categoryColor } from "@/lib/color";
 interface Props {
   entries: TrackEntry[];
   className?: string;
-  /** Aspect ratio in "w/h" form (default 5/6 — slightly taller than square). */
+  /** Aspect ratio in "w/h" form. Default ~4:3 — Paris is wider than tall. */
   aspect?: string;
 }
 
-/**
- * Static Paris-mini-map showing the user's pins as a chronological
- * constellation. Uses real CARTO Positron no-labels tiles, dashed
- * polyline connecting pins in time order. All map interactions are
- * disabled — this is a read-only inline visualisation.
- */
-export function Constellation({ entries, className = "", aspect = "5 / 6" }: Props) {
+type LatLngTuple = [number, number];
+
+/** Bounds that frame the actual pins (with small buffer), falling back
+ *  to a sensible zoom for 0 or 1 pins. */
+function boundsForEntries(entries: TrackEntry[]): [LatLngTuple, LatLngTuple] {
+  if (entries.length === 0) return PARIS_BOUNDS;
+
+  if (entries.length === 1) {
+    const e = entries[0];
+    const off = 0.012; // ~roughly 1.3km square
+    return [
+      [e.card.location.lat - off, e.card.location.lng - off],
+      [e.card.location.lat + off, e.card.location.lng + off],
+    ];
+  }
+
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  for (const e of entries) {
+    const { lat, lng } = e.card.location;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+  }
+  // Padding so pins aren't flush against the frame
+  const padLat = Math.max(0.004, (maxLat - minLat) * 0.18);
+  const padLng = Math.max(0.004, (maxLng - minLng) * 0.18);
+  return [
+    [minLat - padLat, minLng - padLng],
+    [maxLat + padLat, maxLng + padLng],
+  ];
+}
+
+export function Constellation({ entries, className = "", aspect = "4 / 3" }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const LRef = useRef<typeof L | null>(null);
   const overlayRef = useRef<L.LayerGroup | null>(null);
+  const [ready, setReady] = useState(false);
+
+  const fitBounds = useMemo(() => boundsForEntries(entries), [entries]);
 
   // Mount the Leaflet map once.
   useEffect(() => {
@@ -44,7 +77,7 @@ export function Constellation({ entries, className = "", aspect = "5 / 6" }: Pro
         boxZoom: false,
         keyboard: false,
         touchZoom: false,
-        // @ts-expect-error: tap is deprecated in newer types but accepted at runtime
+        // @ts-expect-error: tap is accepted at runtime
         tap: false,
       });
 
@@ -59,26 +92,27 @@ export function Constellation({ entries, className = "", aspect = "5 / 6" }: Pro
       overlayRef.current = group;
       mapRef.current = map;
 
-      // Fit exactly to Paris + first ring with a small padding.
-      map.fitBounds(PARIS_BOUNDS as unknown as L.LatLngBoundsExpression, {
-        padding: [8, 8],
+      // Initial fit
+      map.fitBounds(fitBounds as unknown as L.LatLngBoundsExpression, {
+        padding: [16, 16],
         animate: false,
       });
 
-      // Re-measure once the container has its real size.
-      const invalidate = () => map.invalidateSize({ animate: false });
-      requestAnimationFrame(invalidate);
-      const t1 = window.setTimeout(invalidate, 120);
-      const t2 = window.setTimeout(invalidate, 400);
+      const invalidateAndFit = () => {
+        map.invalidateSize({ animate: false });
+        const b = boundsForEntries(entries);
+        map.fitBounds(b as unknown as L.LatLngBoundsExpression, {
+          padding: [16, 16],
+          animate: false,
+        });
+      };
+      requestAnimationFrame(invalidateAndFit);
+      const t1 = window.setTimeout(invalidateAndFit, 120);
+      const t2 = window.setTimeout(invalidateAndFit, 400);
+
       let ro: ResizeObserver | null = null;
       if (ref.current && typeof ResizeObserver !== "undefined") {
-        ro = new ResizeObserver(() => {
-          map.invalidateSize({ animate: false });
-          map.fitBounds(PARIS_BOUNDS as unknown as L.LatLngBoundsExpression, {
-            padding: [8, 8],
-            animate: false,
-          });
-        });
+        ro = new ResizeObserver(invalidateAndFit);
         ro.observe(ref.current);
       }
 
@@ -87,6 +121,8 @@ export function Constellation({ entries, className = "", aspect = "5 / 6" }: Pro
         window.clearTimeout(t2);
         ro?.disconnect();
       };
+
+      setReady(true);
     })();
 
     return () => {
@@ -98,10 +134,15 @@ export function Constellation({ entries, className = "", aspect = "5 / 6" }: Pro
         mapRef.current = null;
       }
     };
+    // We intentionally only set this up once — entries are wired in below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-render overlay (markers + connector polyline) whenever entries change.
+  // Re-render overlay (markers + connector polyline) whenever entries change
+  // — and ALSO once the map first becomes ready (otherwise the first entries
+  // arrive before the map exists and never re-render).
   useEffect(() => {
+    if (!ready) return;
     const map = mapRef.current;
     const L = LRef.current;
     const group = overlayRef.current;
@@ -111,14 +152,14 @@ export function Constellation({ entries, className = "", aspect = "5 / 6" }: Pro
     const ordered = entries.slice().sort((a, b) => a.at - b.at);
 
     if (ordered.length > 1) {
-      const latlngs: [number, number][] = ordered.map((e) => [
+      const latlngs: LatLngTuple[] = ordered.map((e) => [
         e.card.location.lat,
         e.card.location.lng,
       ]);
       L.polyline(latlngs, {
         color: "#0a0a0a",
-        opacity: 0.4,
-        weight: 1.5,
+        opacity: 0.45,
+        weight: 1.8,
         dashArray: "5 5",
         interactive: false,
       }).addTo(group);
@@ -127,26 +168,28 @@ export function Constellation({ entries, className = "", aspect = "5 / 6" }: Pro
     ordered.forEach((e, i) => {
       const inner = cardColor(e.card);
       const outer = categoryColor(e.card);
-      const shadow = `0 0 0 1.5px #ffffff, 0 0 0 3.5px ${outer}, 0 0 0 5px rgba(255,255,255,0.95)`;
       const html = `
-        <div style="position:relative; width:10px; height:10px; pointer-events:none;">
+        <div style="position:relative; pointer-events:none;">
           <div style="
-            width:100%; height:100%; border-radius:50%;
+            width:12px; height:12px; border-radius:50%;
             background:${inner};
-            box-shadow:${shadow};
+            border: 3px solid ${outer};
+            box-shadow: 0 0 0 2px #ffffff;
+            transform: translate(-9px, -9px);
           "></div>
           <span style="
-            position:absolute; top:-15px; left:11px;
+            position:absolute; top:-18px; left:10px;
             font-family:'JetBrains Mono', ui-monospace, monospace;
-            font-size:10px; font-weight:500; color:#0a0a0a;
+            font-size:10px; font-weight:600; color:#0a0a0a;
             white-space:nowrap;
+            text-shadow: 0 0 3px #fff, 0 0 3px #fff;
           ">${i + 1}</span>
         </div>`;
       const icon = L.divIcon({
         className: "",
         html,
-        iconSize: [10, 10],
-        iconAnchor: [5, 5],
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
       });
       L.marker([e.card.location.lat, e.card.location.lng], {
         icon,
@@ -154,12 +197,19 @@ export function Constellation({ entries, className = "", aspect = "5 / 6" }: Pro
         keyboard: false,
       }).addTo(group);
     });
-  }, [entries]);
+
+    // Always refit to the entries' actual bounds when they change.
+    map.invalidateSize({ animate: false });
+    map.fitBounds(fitBounds as unknown as L.LatLngBoundsExpression, {
+      padding: [16, 16],
+      animate: false,
+    });
+  }, [entries, ready, fitBounds]);
 
   return (
     <div
-      className={`relative bg-paper ${className}`}
-      style={{ aspectRatio: aspect }}
+      className={`relative bg-paper overflow-hidden ${className}`}
+      style={{ aspectRatio: aspect, maxHeight: "min(70vh, 520px)" }}
     >
       <div ref={ref} className="absolute inset-0" />
       {entries.length === 0 && (
