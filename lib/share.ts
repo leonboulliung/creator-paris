@@ -282,9 +282,97 @@ export async function shareCard(card: Card, avatarDataUrl?: string): Promise<"sh
   return "downloaded";
 }
 
-// Carnet poster: stitches together the user's whole pin constellation
+// ============================================================
+// Tile-fetching helpers — real CARTO Positron no-labels tiles
+// stitched onto the poster as the actual Paris map background.
+// ============================================================
+
+const TILE_SIZE = 256;
+const SUBS = ["a", "b", "c", "d"] as const;
+
+function lng2tileX(lng: number, z: number) {
+  return ((lng + 180) / 360) * Math.pow(2, z);
+}
+function lat2tileY(lat: number, z: number) {
+  const rad = (lat * Math.PI) / 180;
+  return ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * Math.pow(2, z);
+}
+
+/** Stitch a CARTO no-labels tile mosaic that exactly covers the given bbox. */
+async function fetchParisTiles(
+  zoom: number,
+  bounds: [[number, number], [number, number]],
+): Promise<HTMLCanvasElement> {
+  const [[minLat, minLng], [maxLat, maxLng]] = bounds;
+  const xMinF = lng2tileX(minLng, zoom);
+  const xMaxF = lng2tileX(maxLng, zoom);
+  const yMinF = lat2tileY(maxLat, zoom); // y increases southward
+  const yMaxF = lat2tileY(minLat, zoom);
+
+  const xT0 = Math.floor(xMinF);
+  const xT1 = Math.ceil(xMaxF);
+  const yT0 = Math.floor(yMinF);
+  const yT1 = Math.ceil(yMaxF);
+
+  const cols = xT1 - xT0;
+  const rows = yT1 - yT0;
+
+  const full = document.createElement("canvas");
+  full.width = cols * TILE_SIZE;
+  full.height = rows * TILE_SIZE;
+  const fctx = full.getContext("2d");
+  if (!fctx) throw new Error("No canvas context");
+  // background fallback in case any tile fails to load
+  fctx.fillStyle = "#fafafa";
+  fctx.fillRect(0, 0, full.width, full.height);
+
+  const tasks: Promise<void>[] = [];
+  let i = 0;
+  for (let x = xT0; x < xT1; x++) {
+    for (let y = yT0; y < yT1; y++) {
+      const sub = SUBS[i++ % SUBS.length];
+      const url = `https://${sub}.basemaps.cartocdn.com/light_nolabels/${zoom}/${x}/${y}.png`;
+      const dx = (x - xT0) * TILE_SIZE;
+      const dy = (y - yT0) * TILE_SIZE;
+      tasks.push(
+        loadImage(url)
+          .then((img) => {
+            fctx.drawImage(img, dx, dy);
+          })
+          .catch(() => {
+            /* tile failed — keep fallback paper */
+          }),
+      );
+    }
+  }
+  await Promise.all(tasks);
+
+  // Crop the stitched canvas down to the exact bbox area.
+  const cropX = (xMinF - xT0) * TILE_SIZE;
+  const cropY = (yMinF - yT0) * TILE_SIZE;
+  const cropW = (xMaxF - xMinF) * TILE_SIZE;
+  const cropH = (yMaxF - yMinF) * TILE_SIZE;
+  const out = document.createElement("canvas");
+  out.width = Math.max(1, Math.round(cropW));
+  out.height = Math.max(1, Math.round(cropH));
+  const octx = out.getContext("2d");
+  if (!octx) return full;
+  octx.drawImage(full, cropX, cropY, cropW, cropH, 0, 0, out.width, out.height);
+  return out;
+}
+
+// Carnet poster: stitches together the user's whole pin constellation,
+// on top of a real Paris map (CARTO Positron no-labels tiles).
 export async function renderCarnetPoster(
-  cards: { lat: number; lng: number; label: string; title: string; createdAt: number }[],
+  cards: {
+    lat: number;
+    lng: number;
+    label: string;
+    title: string;
+    createdAt: number;
+    color?: string | null;
+    outerColor?: string | null;
+  }[],
   email: string,
 ): Promise<Blob> {
   const PW = 1600;
@@ -294,6 +382,14 @@ export async function renderCarnetPoster(
   canvas.height = PH;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No canvas context");
+
+  // ensure fonts are ready (canvas measures them right)
+  try {
+    const d = document as Document & { fonts?: FontFaceSet };
+    if (d.fonts) await d.fonts.ready;
+  } catch {
+    /* noop */
+  }
 
   // paper
   ctx.fillStyle = "#fafafa";
@@ -307,81 +403,116 @@ export async function renderCarnetPoster(
   ctx.fillText(email.toUpperCase(), 96, 178);
   ctx.fillText(`${cards.length} CARDS  ·  PARIS  ·  ${new Date().getFullYear()}`, 96, 210);
 
-  // map area
-  const mx = 96, my = 280, mw = PW - 192, mh = PH - 280 - 200;
+  // map area dimensions
+  const mx = 96;
+  const my = 280;
+  const mw = PW - 192;
+  const mh = PH - 280 - 200;
+
+  // Background frame
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(mx, my, mw, mh);
+
+  // Fetch & paint real CARTO tiles for the Paris bbox.
+  try {
+    const tileCanvas = await fetchParisTiles(13, PARIS_BOUNDS);
+    // draw with light desaturation by lowering alpha slightly to keep pins prominent
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.drawImage(tileCanvas, mx, my, mw, mh);
+    ctx.restore();
+  } catch {
+    // Fallback: stylised grid + Seine curve if tile fetch fails entirely.
+    ctx.strokeStyle = "#eaeaea";
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 16; i++) {
+      ctx.beginPath();
+      ctx.moveTo(mx + (mw * i) / 16, my);
+      ctx.lineTo(mx + (mw * i) / 16, my + mh);
+      ctx.stroke();
+    }
+    for (let i = 1; i < 20; i++) {
+      ctx.beginPath();
+      ctx.moveTo(mx, my + (mh * i) / 20);
+      ctx.lineTo(mx + mw, my + (mh * i) / 20);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#0a0a0a";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(mx, my + mh * 0.58);
+    ctx.bezierCurveTo(
+      mx + mw * 0.28, my + mh * 0.46,
+      mx + mw * 0.58, my + mh * 0.7,
+      mx + mw, my + mh * 0.52,
+    );
+    ctx.stroke();
+  }
+
+  // Hairline border around the map
   ctx.strokeStyle = "#0a0a0a";
   ctx.lineWidth = 2;
   ctx.strokeRect(mx + 1, my + 1, mw - 2, mh - 2);
 
-  // grid
-  ctx.strokeStyle = "#eaeaea";
-  ctx.lineWidth = 1;
-  for (let i = 1; i < 16; i++) {
-    ctx.beginPath();
-    ctx.moveTo(mx + (mw * i) / 16, my);
-    ctx.lineTo(mx + (mw * i) / 16, my + mh);
-    ctx.stroke();
-  }
-  for (let i = 1; i < 20; i++) {
-    ctx.beginPath();
-    ctx.moveTo(mx, my + (mh * i) / 20);
-    ctx.lineTo(mx + mw, my + (mh * i) / 20);
-    ctx.stroke();
-  }
-
-  // Seine curve
-  ctx.strokeStyle = "#0a0a0a";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(mx, my + mh * 0.58);
-  ctx.bezierCurveTo(
-    mx + mw * 0.28, my + mh * 0.46,
-    mx + mw * 0.58, my + mh * 0.7,
-    mx + mw, my + mh * 0.52,
-  );
-  ctx.stroke();
-
   const [[minLat, minLng], [maxLat, maxLng]] = PARIS_BOUNDS;
 
-  // connecting lines (chronological trajectory)
-  const ordered = [...cards].sort((a, b) => a.createdAt - b.createdAt);
-  ctx.strokeStyle = "rgba(10,10,10,0.25)";
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([6, 6]);
-  ctx.beginPath();
-  ordered.forEach((c, i) => {
-    const nx = (c.lng - minLng) / (maxLng - minLng);
-    const ny = 1 - (c.lat - minLat) / (maxLat - minLat);
-    const px = mx + 30 + Math.max(0, Math.min(1, nx)) * (mw - 60);
-    const py = my + 30 + Math.max(0, Math.min(1, ny)) * (mh - 60);
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  });
-  ctx.stroke();
-  ctx.setLineDash([]);
+  const projectPoint = (lat: number, lng: number) => {
+    const nx = (lng - minLng) / (maxLng - minLng);
+    const ny = 1 - (lat - minLat) / (maxLat - minLat);
+    return {
+      x: mx + Math.max(0, Math.min(1, nx)) * mw,
+      y: my + Math.max(0, Math.min(1, ny)) * mh,
+    };
+  };
 
-  // dots
+  const ordered = [...cards].sort((a, b) => a.createdAt - b.createdAt);
+
+  // chronological dashed connector
+  if (ordered.length > 1) {
+    ctx.strokeStyle = "rgba(10,10,10,0.45)";
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([7, 7]);
+    ctx.beginPath();
+    ordered.forEach((c, i) => {
+      const p = projectPoint(c.lat, c.lng);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // dots (two-ring matching the live map pins)
   ordered.forEach((c, i) => {
-    const nx = (c.lng - minLng) / (maxLng - minLng);
-    const ny = 1 - (c.lat - minLat) / (maxLat - minLat);
-    const px = mx + 30 + Math.max(0, Math.min(1, nx)) * (mw - 60);
-    const py = my + 30 + Math.max(0, Math.min(1, ny)) * (mh - 60);
-    ctx.fillStyle = "rgba(10,10,10,0.12)";
+    const { x, y } = projectPoint(c.lat, c.lng);
+    const inner = c.color || "#0a0a0a";
+    const outer = c.outerColor || c.color || "#0a0a0a";
+
+    // halo
+    ctx.fillStyle = "rgba(10,10,10,0.10)";
     ctx.beginPath();
-    ctx.arc(px, py, 20, 0, Math.PI * 2);
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#0a0a0a";
+
+    // outer ring
+    ctx.fillStyle = outer;
     ctx.beginPath();
-    ctx.arc(px, py, 8, 0, Math.PI * 2);
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // inner disc
+    ctx.fillStyle = inner;
+    ctx.beginPath();
+    ctx.arc(x, y, 5.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 1.8;
     ctx.stroke();
+
+    // number
     ctx.fillStyle = "#0a0a0a";
     ctx.font = "700 14px 'JetBrains Mono', monospace";
-    ctx.fillText(`${i + 1}`, px + 14, py - 10);
+    ctx.fillText(`${i + 1}`, x + 14, y - 10);
   });
 
   // footer
@@ -397,7 +528,15 @@ export async function renderCarnetPoster(
 }
 
 export async function downloadCarnetPoster(
-  cards: { lat: number; lng: number; label: string; title: string; createdAt: number }[],
+  cards: {
+    lat: number;
+    lng: number;
+    label: string;
+    title: string;
+    createdAt: number;
+    color?: string | null;
+    outerColor?: string | null;
+  }[],
   email: string,
 ) {
   const blob = await renderCarnetPoster(cards, email);

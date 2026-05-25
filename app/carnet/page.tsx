@@ -11,9 +11,39 @@ import type { Profile, TrackEntry } from "@/lib/types";
 import { expiresIn, timeAgo } from "@/lib/time";
 import { downloadCarnetPoster, exportCarnetPrintable, shareCard } from "@/lib/share";
 import { ACTIVITY_LABEL, activityFromTitle, type Activity } from "@/lib/vibe";
-import { cardColor, isDark } from "@/lib/color";
+import { cardColor, categoryColor, isDark } from "@/lib/color";
+import { Constellation } from "@/components/Constellation";
 
 type Tab = "track" | "map" | "export";
+
+interface MonthGroup {
+  key: string;
+  label: string;
+  items: TrackEntry[];
+}
+
+function groupByMonth(entries: TrackEntry[]): MonthGroup[] {
+  const map = new Map<string, TrackEntry[]>();
+  for (const e of entries) {
+    const d = new Date(e.at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(e);
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([key, items]) => {
+      const [y, m] = key.split("-");
+      const label = new Date(Number(y), Number(m) - 1)
+        .toLocaleDateString("en-GB", { month: "long", year: "numeric" })
+        .toUpperCase();
+      return {
+        key,
+        label,
+        items: items.slice().sort((a, b) => b.at - a.at),
+      };
+    });
+}
 
 // API returns snake_case rows from Supabase; light client-side mapping.
 function mapProfileRow(p: Record<string, unknown>): Profile {
@@ -55,7 +85,30 @@ export default function CarnetPage() {
   const counts = useMemo(() => {
     const created = track.filter((t) => t.isCreator).length;
     const joined = track.length - created;
-    return { created, joined, total: track.length };
+    const rolesPlayed = new Set(
+      track.filter((t) => !t.isCreator).map((t) => t.role).filter(Boolean),
+    ).size;
+    const quartiers = new Set(track.map((t) => t.card.location.label)).size;
+    const monthsSpan = (() => {
+      if (track.length === 0) return 0;
+      const months = new Set(track.map((t) => {
+        const d = new Date(t.at);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      }));
+      return months.size;
+    })();
+    return { created, joined, total: track.length, rolesPlayed, quartiers, monthsSpan };
+  }, [track]);
+
+  const monthGroups = useMemo(() => groupByMonth(track), [track]);
+  const range = useMemo(() => {
+    if (track.length === 0) return "";
+    const ats = track.map((t) => t.at);
+    const first = new Date(Math.min(...ats));
+    const last = new Date(Math.max(...ats));
+    const fmt = (d: Date) =>
+      d.toLocaleDateString("en-GB", { month: "short", year: "numeric" }).toUpperCase();
+    return `${fmt(first)} → ${fmt(last)}`;
   }, [track]);
 
   if (!isLoaded) return <div className="h-[100dvh] bg-paper" />;
@@ -141,15 +194,8 @@ export default function CarnetPage() {
 
       <div className={tab === "map" ? "flex-1 min-h-0" : "flex-1 min-h-0 overflow-y-auto"}>
         {tab === "track" && (
-          <div>
-            {track.map((t) => (
-              <TrackRow
-                key={`${t.card.id}-${t.isCreator ? "c" : "j"}`}
-                entry={t}
-                avatarUrl={user.imageUrl}
-              />
-            ))}
-            {track.length === 0 && (
+          <div className="px-4 sm:px-8 py-6 sm:py-10 max-w-[1280px] mx-auto">
+            {track.length === 0 ? (
               <div className="px-6 py-20 text-center">
                 <div className="editorial font-black text-[34px]">Your track is empty.</div>
                 <p className="mono text-[12px] opacity-70 mt-2">
@@ -157,6 +203,73 @@ export default function CarnetPage() {
                 </p>
                 <Link href="/" className="btn inline-block mt-6">＋ POST ONE THING</Link>
               </div>
+            ) : (
+              <>
+                <div className="mb-6 sm:mb-10">
+                  <p className="editorial font-black text-[32px] sm:text-[44px] leading-[0.96] max-w-3xl">
+                    A printable record<br />
+                    of every light you stood under.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-6 sm:gap-10 items-start">
+                  {/* LEFT — poster card */}
+                  <div className="lg:sticky lg:top-4">
+                    <div className="border border-ink bg-paper p-5 sm:p-7">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <div className="mono text-[10px] tracking-widest opacity-60">
+                          CARNET · @{displayName.toUpperCase()}
+                        </div>
+                        <div className="mono text-[10px] tracking-widest opacity-60 text-right">
+                          {range}
+                        </div>
+                      </div>
+
+                      <h2 className="editorial font-black text-[28px] sm:text-[36px] leading-[0.96] mt-4">
+                        {counts.monthsSpan} {counts.monthsSpan === 1 ? "month" : "months"},<br />
+                        {counts.total} {counts.total === 1 ? "entry" : "entries"},<br />
+                        {counts.quartiers} {counts.quartiers === 1 ? "quartier" : "quartiers"}.
+                      </h2>
+
+                      <div className="mt-3 mono text-[10px] tracking-widest opacity-60 border-t border-rule pt-3">
+                        {counts.total} CARDS · {counts.created} POSTED · {counts.joined} JOINED · {counts.rolesPlayed} ROLES PLAYED
+                      </div>
+
+                      <div className="mt-5">
+                        <Constellation entries={track} />
+                      </div>
+
+                      <div className="mt-4 mono text-[10px] tracking-widest opacity-60 flex items-center justify-between">
+                        <span>CREATOR.PARIS — A LIVING CITY LAYER</span>
+                        <span>ONE THING, THIS WEEK.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RIGHT — chronological table grouped by month */}
+                  <div>
+                    {monthGroups.map((g) => (
+                      <div key={g.key} className="mb-6 last:mb-0">
+                        <div className="flex items-baseline justify-between border-b border-ink pb-1.5 mono text-[10px] tracking-widest opacity-70">
+                          <span>{g.label}</span>
+                          <span>
+                            {g.items.length} {g.items.length === 1 ? "ENTRY" : "ENTRIES"}
+                          </span>
+                        </div>
+                        <ul>
+                          {g.items.map((e) => (
+                            <TrackLine
+                              key={`${e.card.id}-${e.isCreator ? "c" : "j"}`}
+                              entry={e}
+                              avatarUrl={user.imageUrl}
+                            />
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -189,6 +302,8 @@ export default function CarnetPage() {
                       label: c.location.label,
                       title: c.title,
                       createdAt: c.createdAt,
+                      color: cardColor(c),
+                      outerColor: categoryColor(c),
                     })),
                     displayName,
                   )
@@ -198,6 +313,9 @@ export default function CarnetPage() {
               >
                 DOWNLOAD POSTER (1600×2000)
               </button>
+              <p className="mono text-[10px] opacity-50 mt-2">
+                Uses real CARTO Positron (no labels) tiles for the Paris background.
+              </p>
             </div>
 
             <div className="border-t border-ink pt-6">
@@ -226,7 +344,8 @@ export default function CarnetPage() {
   );
 }
 
-function TrackRow({
+/** Compact one-line track entry — editorial chronological row. */
+function TrackLine({
   entry,
   avatarUrl,
 }: {
@@ -234,64 +353,60 @@ function TrackRow({
   avatarUrl?: string;
 }) {
   const { card, role, at, isCreator } = entry;
-  const color = cardColor(card);
-  const dark = isDark(color);
-  const activity = (card.category as Activity | null) || activityFromTitle(card.title);
   const [busy, setBusy] = useState(false);
-  const now = Date.now();
-  const status = card.archived || card.expiresAt <= now ? "ARCHIVED" : "ACTIVE";
+  const d = new Date(at);
+  const dateStr = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const inner = cardColor(card);
+  const outer = categoryColor(card);
 
   return (
-    <div className="border-b border-ink flex items-stretch">
-      <Link href={`/post/${card.id}`} className="flex-1 flex items-stretch min-w-0">
-        <div
-          className="w-24 sm:w-40 shrink-0 relative"
-          style={{ backgroundColor: color }}
-        >
-          <div
-            className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
-          >
-            {ACTIVITY_LABEL[activity]}
-          </div>
-          <div
-            className={`absolute right-2 bottom-2 mono text-[9px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
-          >
-            {status}
-          </div>
-        </div>
-        <div className="flex-1 px-4 sm:px-6 py-4 sm:py-5 min-w-0">
-          <div className="mono text-[10px] tracking-widest flex items-center gap-2 opacity-70">
-            <span
-              className={`px-1.5 py-0.5 border border-ink ${isCreator ? "bg-ink text-paper" : "bg-paper text-ink"}`}
-            >
-              {role}
-            </span>
-            <span>{card.location.label.toUpperCase()}</span>
-            <span className="ml-auto">{timeAgo(at)}</span>
-          </div>
-          <h2 className="editorial font-black text-[24px] sm:text-[32px] mt-2 leading-[0.95]">
+    <li className="border-b border-rule last:border-b-0">
+      <div className="grid grid-cols-[44px_22px_minmax(0,1fr)_auto] items-center gap-3 py-2.5 group">
+        <Link href={`/post/${card.id}`} className="contents">
+          <span className="mono text-[11px] tabular-nums opacity-60">
+            {dateStr}
+          </span>
+          <span className="inline-flex items-center justify-center">
+            {isCreator ? (
+              <span
+                className="block w-3 h-3 border-2"
+                style={{ borderColor: outer }}
+                aria-label="Posted"
+              />
+            ) : (
+              <span
+                className="block w-3 h-3"
+                style={{ backgroundColor: inner, outline: `1px solid ${outer}` }}
+                aria-label="Joined"
+              />
+            )}
+          </span>
+          <span className="text-[14px] leading-snug truncate group-hover:underline decoration-2 underline-offset-2">
             {card.title}
-          </h2>
-          <div className="mt-3 mono text-[11px] opacity-70">
-            {isCreator ? "BY YOU" : `BY @${card.owner.displayName}`} · {card.joiners.length}/{card.spots} PEOPLE · {expiresIn(card.expiresAt).toUpperCase()}
-          </div>
+            <span className="opacity-50"> — {card.location.label}</span>
+          </span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <span className="mono text-[10px] tracking-widest opacity-70">
+            {isCreator ? "POSTED" : role}
+          </span>
+          <button
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await shareCard(card, avatarUrl);
+              } finally {
+                setBusy(false);
+              }
+            }}
+            disabled={busy}
+            className="mono text-[10px] tracking-widest px-1.5 py-0.5 border border-ink opacity-0 group-hover:opacity-100 hover:bg-ink hover:text-paper transition"
+            aria-label="Share as image"
+          >
+            {busy ? "…" : "↗"}
+          </button>
         </div>
-      </Link>
-      <button
-        onClick={async () => {
-          setBusy(true);
-          try {
-            await shareCard(card, avatarUrl);
-          } finally {
-            setBusy(false);
-          }
-        }}
-        disabled={busy}
-        className="w-16 sm:w-24 border-l border-ink mono text-[10px] tracking-widest hover:bg-ink hover:text-paper"
-        aria-label="Share as image"
-      >
-        {busy ? "…" : "↗ SHARE"}
-      </button>
-    </div>
+      </div>
+    </li>
   );
 }
