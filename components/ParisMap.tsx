@@ -25,6 +25,8 @@ interface Props {
   height?: string;
   selectable?: boolean;
   pickedLatLng?: { lat: number; lng: number } | null;
+  /** Colors for the picked pin (the one the user is currently dropping). */
+  pickedColors?: { inner: string; outer: string };
   onPick?: (latlng: { lat: number; lng: number }) => void;
   onSelectCard?: (id: string) => void;
   freshIds?: Set<string>;
@@ -43,6 +45,7 @@ export function ParisMap({
   height = "100%",
   selectable = false,
   pickedLatLng,
+  pickedColors,
   onPick,
   onSelectCard,
   freshIds,
@@ -250,11 +253,14 @@ export function ParisMap({
       pickedMarkerRef.current = null;
     }
     if (pickedLatLng) {
+      const inner = pickedColors?.inner || "#ffffff";
+      const outer = pickedColors?.outer || "#0a0a0a";
+      const shadow = `0 0 0 1.5px #ffffff, 0 0 0 3.5px ${outer}, 0 0 0 5px rgba(255,255,255,0.95)`;
       const icon = L.divIcon({
         className: "",
-        html: `<div class="cp-pin fresh" style="background:#fff; box-shadow:0 0 0 3px #0a0a0a"></div>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
+        html: `<div class="cp-pin fresh" style="background:${inner}; box-shadow:${shadow}"></div>`,
+        iconSize: [10, 10],
+        iconAnchor: [5, 5],
       });
       const m = L.marker([pickedLatLng.lat, pickedLatLng.lng], {
         icon,
@@ -267,7 +273,7 @@ export function ParisMap({
       pickedMarkerRef.current = m;
       mapRef.current.panTo([pickedLatLng.lat, pickedLatLng.lng], { animate: true });
     }
-  }, [pickedLatLng, ready]);
+  }, [pickedLatLng, pickedColors?.inner, pickedColors?.outer, ready]);
 
   return (
     <div

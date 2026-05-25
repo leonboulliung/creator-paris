@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ACTIVITY_ACCENT, ACTIVITY_GLYPH, ACTIVITY_LABEL, CATEGORY_ORDER, type Activity } from "@/lib/vibe";
-import { COLOR_PALETTE, cardColor, isDark } from "@/lib/color";
+import { COLOR_PALETTE, cardColor, categoryColor, isDark } from "@/lib/color";
 import type { Permission } from "@/lib/types";
 import { startsLabel } from "@/lib/time";
 import { combinedSearch, type LocationResult } from "@/lib/location";
@@ -177,8 +176,6 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
 
   const canSubmit = !!title.trim() && !!latlng && !!startsAt && !submitting;
   const chipBase = "px-3 py-2 border border-ink mono text-[10px] tracking-widest";
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
 
   // The color-swatch + close cluster is identical in both layouts.
   const topBarRight = (
@@ -239,16 +236,25 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
     </div>
   );
 
+  // Picked-pin colors mirror the live preview: explicit color (or fallback
+  // to the category color) for the inner disc, category color for the outer
+  // ring. Stays white/ink while neither category nor color is chosen.
+  const pickedInner =
+    color || (category ? categoryColor({ category }) : "#ffffff");
+  const pickedOuter =
+    category ? categoryColor({ category }) : color || "#0a0a0a";
+
   // Desktop side-panel: full Paris map on the left, configurator on the right.
   if (isDesktop) {
-    const desktopNode = (
-      <div className="fixed inset-0 z-[1200] flex bg-paper">
+    return (
+      <div className="h-full w-full flex bg-paper">
         {/* main map */}
         <div className="flex-1 relative min-w-0">
           <ParisMap
             cards={existingCards}
             selectable
             pickedLatLng={latlng}
+            pickedColors={{ inner: pickedInner, outer: pickedOuter }}
             onPick={(ll) => {
               setLatlng(ll);
               setPicked(null);
@@ -256,7 +262,10 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
             }}
             gestureHandling={false}
           />
-          <div className="absolute left-4 top-4 z-[400] mono text-[10px] tracking-widest bg-paper border border-ink px-3 py-2 shadow-lg max-w-[300px]">
+          <div
+            className="absolute left-3 z-[1100] mono text-[10px] tracking-widest bg-paper border border-ink px-2 py-1 max-w-[calc(100%-24px)] truncate"
+            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+          >
             {latlng
               ? `PIN · ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)} · CLICK TO MOVE`
               : "CLICK / TAP THE MAP TO DROP YOUR PIN"}
@@ -568,12 +577,10 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
         </aside>
       </div>
     );
-    if (!mounted) return null;
-    return createPortal(desktopNode, document.body);
   }
 
-  const node = (
-    <div className="fixed inset-0 z-[1200] flex sm:items-center sm:justify-center sm:bg-ink/60 sm:p-6">
+  return (
+    <div className="h-full w-full flex sm:items-center sm:justify-center sm:bg-ink/60 sm:p-6">
       <div className="bg-paper flex flex-col w-full h-full sm:max-w-[1100px] sm:max-h-[90vh] sm:h-auto sm:border sm:border-ink sm:shadow-2xl">
       <div
         className="relative flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top"
@@ -874,6 +881,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
                 cards={[]}
                 selectable
                 pickedLatLng={latlng}
+                pickedColors={{ inner: pickedInner, outer: pickedOuter }}
                 onPick={(ll) => {
                   setLatlng(ll);
                   setPicked(null);
@@ -915,9 +923,4 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
       </div>
     </div>
   );
-
-  // Portal to document.body so the modal escapes any parent stacking
-  // context (iOS Safari traps fixed children inside scrollable mains).
-  if (!mounted) return null;
-  return createPortal(node, document.body);
 }
