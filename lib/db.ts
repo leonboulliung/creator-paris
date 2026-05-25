@@ -139,6 +139,16 @@ export async function fetchActiveCards(): Promise<Card[]> {
     .filter((c) => c.joiners.length < c.spots);
 }
 
+export async function fetchProfile(userId: string): Promise<Profile | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, phone, display_name, avatar_url, socials, interests, created_at")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapProfile(data as unknown as ProfileRow) : null;
+}
+
 export async function fetchCardById(id: string): Promise<Card | null> {
   const { data, error } = await supabase
     .from("cards")

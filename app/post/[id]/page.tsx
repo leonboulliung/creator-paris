@@ -207,7 +207,7 @@ export default function PostPage() {
             <div className="w-10 h-10 border border-ink bg-ink/10" aria-hidden />
           )}
           <div>
-            <div>@{card.owner.displayName}</div>
+            <Link href={`/u/${card.owner.id}`} className="hover:underline">@{card.owner.displayName}</Link>
             <div className="opacity-60">{timeAgo(card.createdAt)} ago</div>
           </div>
           <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
@@ -348,7 +348,7 @@ export default function PostPage() {
           <ul>
             <li className="px-3 py-2 border-t border-rule flex items-center gap-3">
               <span className="tag shrink-0">CREATOR</span>
-              <span className="mono text-[12px] truncate">@{card.owner.displayName}</span>
+              <Link href={`/u/${card.owner.id}`} className="mono text-[12px] truncate hover:underline">@{card.owner.displayName}</Link>
             </li>
             {card.joiners.map((j) => (
               <li key={j.userId} className="px-3 py-2 border-t border-rule flex items-center gap-3">
@@ -369,7 +369,7 @@ export default function PostPage() {
                 ) : (
                   <span className="tag shrink-0">{j.role.toUpperCase() || "JOINER"}</span>
                 )}
-                <span className="mono text-[12px] truncate flex-1">@{j.user.displayName}</span>
+                <Link href={`/u/${j.userId}`} className="mono text-[12px] truncate flex-1 hover:underline">@{j.user.displayName}</Link>
                 {mine && (
                   <button
                     onClick={() => doRemoveJoiner(j.userId)}

@@ -14,7 +14,7 @@ import { ACTIVITY_LABEL, activityFromTitle, type Activity } from "@/lib/vibe";
 import { cardColor, categoryColor, isDark } from "@/lib/color";
 import { Constellation } from "@/components/Constellation";
 
-type Tab = "track" | "map" | "export";
+type Tab = "track" | "carnet" | "map";
 
 interface MonthGroup {
   key: string;
@@ -63,6 +63,7 @@ export default function CarnetPage() {
   const [tab, setTab] = useState<Tab>("track");
   const [track, setTrack] = useState<TrackEntry[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [exporting, setExporting] = useState<"png" | "pdf" | null>(null);
 
   const refresh = useCallback(() => {
     if (!user) return;
@@ -181,7 +182,7 @@ export default function CarnetPage() {
       </div>
 
       <div className="border-b border-ink px-4 sm:px-8 flex shrink-0">
-        {(["track", "map", "export"] as Tab[]).map((t) => (
+        {(["track", "carnet", "map"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -194,7 +195,7 @@ export default function CarnetPage() {
 
       <div className={tab === "map" ? "flex-1 min-h-0" : "flex-1 min-h-0 overflow-y-auto"}>
         {tab === "track" && (
-          <div className="px-4 sm:px-8 py-6 sm:py-10 max-w-[1280px] mx-auto">
+          <div>
             {track.length === 0 ? (
               <div className="px-6 py-20 text-center">
                 <div className="editorial font-black text-[34px]">Your track is empty.</div>
@@ -204,12 +205,68 @@ export default function CarnetPage() {
                 <Link href="/" className="btn inline-block mt-6">＋ POST ONE THING</Link>
               </div>
             ) : (
+              track.map((t) => (
+                <TrackRow
+                  key={`${t.card.id}-${t.isCreator ? "c" : "j"}`}
+                  entry={t}
+                  avatarUrl={user.imageUrl}
+                />
+              ))
+            )}
+          </div>
+        )}
+
+        {tab === "carnet" && (
+          <div className="px-4 sm:px-8 py-6 sm:py-10 max-w-[1280px] mx-auto">
+            {track.length === 0 ? (
+              <div className="px-6 py-20 text-center">
+                <div className="editorial font-black text-[34px]">Nothing to print yet.</div>
+                <p className="mono text-[12px] opacity-70 mt-2">
+                  Once you have a few cards, your carnet starts taking shape here.
+                </p>
+                <Link href="/" className="btn inline-block mt-6">＋ POST ONE THING</Link>
+              </div>
+            ) : (
               <>
-                <div className="mb-6 sm:mb-10">
+                <div className="mb-6 sm:mb-10 flex flex-wrap items-end justify-between gap-4">
                   <p className="editorial font-black text-[32px] sm:text-[44px] leading-[0.96] max-w-3xl">
                     A printable record<br />
                     of every light you stood under.
                   </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={async () => {
+                        setExporting("png");
+                        try {
+                          await downloadCarnetPoster(
+                            mapCards.map((c) => ({
+                              lat: c.location.lat,
+                              lng: c.location.lng,
+                              label: c.location.label,
+                              title: c.title,
+                              createdAt: c.createdAt,
+                              color: cardColor(c),
+                              outerColor: categoryColor(c),
+                            })),
+                            displayName,
+                          );
+                        } finally {
+                          setExporting(null);
+                        }
+                      }}
+                      disabled={exporting !== null}
+                      className="btn"
+                    >
+                      {exporting === "png" ? "RENDERING…" : "↓ PNG POSTER"}
+                    </button>
+                    <button
+                      onClick={() => exportCarnetPrintable(mapCards, displayName)}
+                      className="btn ghost"
+                      disabled={exporting !== null}
+                    >
+                      ↓ PDF
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-6 sm:gap-10 items-start">
@@ -286,58 +343,6 @@ export default function CarnetPage() {
           </div>
         )}
 
-        {tab === "export" && (
-          <div className="px-4 sm:px-8 py-8 space-y-6 max-w-2xl">
-            <div>
-              <div className="editorial font-black text-[28px]">Carnet Poster</div>
-              <p className="mono text-[11px] opacity-70 mt-2">
-                High-res PNG of your Paris constellation — chronological trajectory through the city.
-              </p>
-              <button
-                onClick={() =>
-                  downloadCarnetPoster(
-                    mapCards.map((c) => ({
-                      lat: c.location.lat,
-                      lng: c.location.lng,
-                      label: c.location.label,
-                      title: c.title,
-                      createdAt: c.createdAt,
-                      color: cardColor(c),
-                      outerColor: categoryColor(c),
-                    })),
-                    displayName,
-                  )
-                }
-                className="btn mt-3"
-                disabled={mapCards.length === 0}
-              >
-                DOWNLOAD POSTER (1600×2000)
-              </button>
-              <p className="mono text-[10px] opacity-50 mt-2">
-                Uses real CARTO Positron (no labels) tiles for the Paris background.
-              </p>
-            </div>
-
-            <div className="border-t border-ink pt-6">
-              <div className="editorial font-black text-[28px]">Carnet PDF</div>
-              <p className="mono text-[11px] opacity-70 mt-2">
-                All your cards stitched together · opens a print window — save as PDF.
-              </p>
-              <button
-                onClick={() => exportCarnetPrintable(mapCards, displayName)}
-                className="btn mt-3"
-                disabled={mapCards.length === 0}
-              >
-                EXPORT AS PDF
-              </button>
-            </div>
-
-            <div className="border-t border-ink pt-6 mono text-[11px] opacity-60">
-              Want to change your name or avatar? Click the avatar in the top-right and
-              pick „Manage account" — handled by Clerk.
-            </div>
-          </div>
-        )}
       </div>
       </main>
     </div>
@@ -408,5 +413,141 @@ function TrackLine({
         </div>
       </div>
     </li>
+  );
+}
+
+/** Detail track card with full meta + clickable crew avatars. */
+function TrackRow({
+  entry,
+  avatarUrl,
+}: {
+  entry: TrackEntry;
+  avatarUrl?: string;
+}) {
+  const { card, role, at, isCreator } = entry;
+  const color = cardColor(card);
+  const dark = isDark(color);
+  const activity = (card.category as Activity | null) || activityFromTitle(card.title);
+  const [busy, setBusy] = useState(false);
+  const now = Date.now();
+  const status = card.archived || card.expiresAt <= now ? "ARCHIVED" : "ACTIVE";
+
+  // Crew = creator + joiners. De-duped, max 6 visible.
+  const allCrew = [
+    { id: card.owner.id, displayName: card.owner.displayName, avatarUrl: card.owner.avatarUrl, isCreator: true as const },
+    ...card.joiners.map((j) => ({
+      id: j.userId,
+      displayName: j.user.displayName,
+      avatarUrl: j.user.avatarUrl,
+      isCreator: false as const,
+    })),
+  ];
+  const visibleCrew = allCrew.slice(0, 6);
+  const restCrew = allCrew.length - visibleCrew.length;
+
+  return (
+    <div className="border-b border-ink flex items-stretch">
+      <div className="flex-1 flex items-stretch min-w-0">
+        <Link
+          href={`/post/${card.id}`}
+          className="w-16 sm:w-28 shrink-0 relative block"
+          style={{ backgroundColor: color }}
+          aria-label="Open card"
+        >
+          <div
+            className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+          >
+            {ACTIVITY_LABEL[activity]}
+          </div>
+          <div
+            className={`absolute right-2 bottom-2 mono text-[9px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+          >
+            {status}
+          </div>
+        </Link>
+
+        <div className="flex-1 px-4 sm:px-6 py-4 sm:py-5 min-w-0">
+          <div className="mono text-[10px] tracking-widest flex items-center gap-2 opacity-70 flex-wrap">
+            <span
+              className={`px-1.5 py-0.5 border border-ink ${isCreator ? "bg-ink text-paper" : "bg-paper text-ink"}`}
+            >
+              {isCreator ? "CREATOR" : role.toUpperCase() || "JOINER"}
+            </span>
+            <span>{card.location.label.toUpperCase()}</span>
+            <span className="ml-auto">{timeAgo(at)}</span>
+          </div>
+
+          <Link href={`/post/${card.id}`} className="block group">
+            <h2 className="editorial font-black text-[22px] sm:text-[28px] mt-2 leading-[0.95] group-hover:underline decoration-2 underline-offset-4">
+              {card.title}
+            </h2>
+          </Link>
+
+          <div className="mt-3 flex items-center gap-3 flex-wrap">
+            <div className="mono text-[11px] opacity-70 flex items-center gap-2 flex-wrap">
+              <Link href={`/u/${card.owner.id}`} className="hover:underline">
+                {isCreator ? "BY YOU" : `BY @${card.owner.displayName}`}
+              </Link>
+              <span>·</span>
+              <span>
+                {card.joiners.length}/{card.spots} PEOPLE
+              </span>
+              <span>·</span>
+              <span>{expiresIn(card.expiresAt).toUpperCase()}</span>
+            </div>
+            {allCrew.length > 0 && (
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="mono text-[10px] tracking-widest opacity-60 hidden sm:inline">
+                  CREW
+                </span>
+                <div className="flex -space-x-1.5">
+                  {visibleCrew.map((m) => (
+                    <Link
+                      key={m.id}
+                      href={`/u/${m.id}`}
+                      title={`@${m.displayName}${m.isCreator ? " · creator" : ""}`}
+                      className="block w-7 h-7 border border-ink bg-paper overflow-hidden hover:z-10 hover:scale-110 transition relative"
+                    >
+                      {m.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={m.avatarUrl}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="mono text-[9px] flex items-center justify-center w-full h-full opacity-60">
+                          {m.displayName.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                  {restCrew > 0 && (
+                    <span className="block w-7 h-7 border border-ink bg-paper mono text-[9px] tracking-widest flex items-center justify-center">
+                      +{restCrew}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await shareCard(card, avatarUrl);
+          } finally {
+            setBusy(false);
+          }
+        }}
+        disabled={busy}
+        className="w-12 sm:w-20 border-l border-ink mono text-[10px] tracking-widest hover:bg-ink hover:text-paper"
+        aria-label="Share as image"
+      >
+        {busy ? "…" : "↗"}
+      </button>
+    </div>
   );
 }
