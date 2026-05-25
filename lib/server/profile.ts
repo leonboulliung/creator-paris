@@ -41,10 +41,12 @@ export async function ensureProfile(userId: string) {
     return existing;
   }
 
+  // Default handle on first creation. The onboarding flow lets the user
+  // overwrite this via PATCH /api/profile/me with their chosen username.
   const displayName =
-    [cu.firstName, cu.lastName].filter(Boolean).join(" ").trim() ||
     cu.username ||
-    `Paris-${userId.slice(-4)}`;
+    [cu.firstName, cu.lastName].filter(Boolean).join("").toLowerCase().trim() ||
+    `paris-${userId.slice(-4)}`;
 
   const { data: created, error } = await admin
     .from("profiles")

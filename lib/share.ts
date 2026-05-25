@@ -177,7 +177,7 @@ export async function renderShareImage(card: Card, avatarDataUrl?: string): Prom
   ctx.fillStyle = heroDark ? "#fafafa" : "#0a0a0a";
   ctx.font = "500 22px 'JetBrains Mono', monospace";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText(card.owner.displayName, avX + avSize + 22, avY + avSize / 2 + 8);
+  ctx.fillText(`@${card.owner.displayName}`, avX + avSize + 22, avY + avSize / 2 + 8);
 
   // bottom panel: title + meta + minimap
   const panelY = heroH;
@@ -223,7 +223,7 @@ export async function renderShareImage(card: Card, avatarDataUrl?: string): Prom
         })
         .toUpperCase()
     : "";
-  const meta2 = `STARTS ${expiryStr}  ·  ${card.joiners.length}/${card.spots} SPOTS`;
+  const meta2 = `STARTS ${expiryStr}  ·  ${card.joiners.length}/${card.spots} PEOPLE`;
   ctx.fillText(meta1, 48, ty + 24);
   ctx.fillText(meta2, 48, ty + 56);
 

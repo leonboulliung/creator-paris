@@ -8,7 +8,7 @@ import { PARIS_BOUNDS, PARIS_CENTER } from "@/lib/quartiers";
 import type { Card } from "@/lib/types";
 import { parisHour } from "@/lib/time";
 import { TOD_LABEL, timeOfDayFromHour, type TimeOfDay } from "@/lib/vibe";
-import { cardColor } from "@/lib/color";
+import { cardColor, categoryColor } from "@/lib/color";
 
 // Module-scope flag — the plugin only needs registering once per page.
 let gestureHandlerRegistered = false;
@@ -220,12 +220,15 @@ export function ParisMap({
     layerRef.current.clearLayers();
     for (const c of cards) {
       const isFresh = freshIds?.has(c.id);
-      const color = cardColor(c);
+      const inner = cardColor(c);
+      const outer = categoryColor(c);
+      // box-shadow rings (in order): white sep, category ring, white halo
+      const shadow = `0 0 0 1.5px #ffffff, 0 0 0 3.5px ${outer}, 0 0 0 5px rgba(255,255,255,0.95)`;
       const icon = L.divIcon({
         className: "",
-        html: `<div class="cp-pin ${isFresh ? "fresh" : ""} ${highlightId === c.id ? "ring-2" : ""}" style="background:${color}"></div>`,
-        iconSize: [12, 12],
-        iconAnchor: [6, 6],
+        html: `<div class="cp-pin ${isFresh ? "fresh" : ""}" style="background:${inner}; box-shadow:${shadow}"></div>`,
+        iconSize: [10, 10],
+        iconAnchor: [5, 5],
       });
       const m = L.marker([c.location.lat, c.location.lng], { icon, riseOnHover: true });
       m.on("click", (e: L.LeafletMouseEvent) => {
@@ -296,7 +299,7 @@ export function ParisMap({
               {preview.card.title}
             </div>
             <div className="mono text-[10px] mt-2 opacity-70">
-              {preview.card.joiners.length}/{preview.card.spots} SPOTS · TAP TO OPEN →
+              {preview.card.joiners.length}/{preview.card.spots} PEOPLE · TAP TO OPEN →
             </div>
           </div>
         </button>

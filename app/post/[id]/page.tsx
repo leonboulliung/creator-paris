@@ -207,7 +207,7 @@ export default function PostPage() {
             <div className="w-10 h-10 border border-ink bg-ink/10" aria-hidden />
           )}
           <div>
-            <div>{card.owner.displayName}</div>
+            <div>@{card.owner.displayName}</div>
             <div className="opacity-60">{timeAgo(card.createdAt)} ago</div>
           </div>
           <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
@@ -215,7 +215,7 @@ export default function PostPage() {
               {card.permission === "public" ? "PUBLIC JOIN" : "REQUEST"}
             </span>
             <span className="tabular-nums">
-              {card.joiners.length}/{card.spots} SPOTS
+              {card.joiners.length}/{card.spots} PEOPLE
             </span>
             {card.expiresAt && (
               <span
@@ -316,7 +316,7 @@ export default function PostPage() {
                   key={r.userId}
                   className="flex items-center justify-between px-3 py-2 border-t border-rule"
                 >
-                  <div className="mono text-[12px]">{r.user.displayName}</div>
+                  <div className="mono text-[12px]">@{r.user.displayName}</div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => doAccept(r.userId)}
@@ -348,7 +348,7 @@ export default function PostPage() {
           <ul>
             <li className="px-3 py-2 border-t border-rule flex items-center gap-3">
               <span className="tag shrink-0">CREATOR</span>
-              <span className="mono text-[12px] truncate">{card.owner.displayName}</span>
+              <span className="mono text-[12px] truncate">@{card.owner.displayName}</span>
             </li>
             {card.joiners.map((j) => (
               <li key={j.userId} className="px-3 py-2 border-t border-rule flex items-center gap-3">
@@ -369,7 +369,7 @@ export default function PostPage() {
                 ) : (
                   <span className="tag shrink-0">{j.role.toUpperCase() || "JOINER"}</span>
                 )}
-                <span className="mono text-[12px] truncate flex-1">{j.user.displayName}</span>
+                <span className="mono text-[12px] truncate flex-1">@{j.user.displayName}</span>
                 {mine && (
                   <button
                     onClick={() => doRemoveJoiner(j.userId)}
@@ -422,7 +422,7 @@ export default function PostPage() {
               />
             </div>
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">SPOTS</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">PEOPLE</label>
               <input
                 type="number"
                 min={1}

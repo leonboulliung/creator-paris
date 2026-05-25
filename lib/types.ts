@@ -6,11 +6,20 @@ export interface CardLocation {
   label: string;
 }
 
+export interface Socials {
+  instagram?: string;
+  telegram?: string;
+  whatsapp?: string;
+  site?: string;
+}
+
 export interface Profile {
   id: string;            // Clerk user ID, e.g. "user_2abc..."
   phone: string | null;  // E.164 from Clerk, may be null if not yet synced
-  displayName: string;
+  displayName: string;   // user-picked handle, e.g. "leonparis"
   avatarUrl: string | null;
+  socials: Socials | null;
+  interests: string[] | null;
   createdAt: number;
 }
 

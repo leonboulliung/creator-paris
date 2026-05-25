@@ -57,7 +57,7 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
                 {card.permission === "public" ? "PUBLIC JOIN" : "REQUEST"}
               </span>
               <span className="tabular-nums">
-                {card.joiners.length}/{card.spots} SPOTS
+                {card.joiners.length}/{card.spots} PEOPLE
               </span>
               {card.expiresAt && (
                 <span className="tabular-nums opacity-70">
@@ -71,7 +71,7 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
               )}
             </div>
             <div className="opacity-70 truncate max-w-[140px]">
-              {card.owner.displayName}
+              @{card.owner.displayName}
             </div>
           </div>
         </div>

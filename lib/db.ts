@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Card, CardJoiner, CardRequest, Profile, TrackEntry } from "./types";
+import type { Card, CardJoiner, CardRequest, Profile, Socials, TrackEntry } from "./types";
 
 // ============================================================
 // Row → TS mapping (DB uses snake_case; UI uses camelCase)
@@ -10,6 +10,8 @@ type ProfileRow = {
   phone: string | null;
   display_name: string;
   avatar_url: string | null;
+  socials: Socials | null;
+  interests: string[] | null;
   created_at: string;
 };
 
@@ -48,8 +50,10 @@ type CardRow = {
 const blankProfile = (id: string): Profile => ({
   id,
   phone: null,
-  displayName: `Paris-${id.slice(-4) || "0000"}`,
+  displayName: `paris-${id.slice(-4) || "0000"}`,
   avatarUrl: null,
+  socials: null,
+  interests: null,
   createdAt: 0,
 });
 
@@ -60,6 +64,8 @@ function mapProfile(row: ProfileRow | null, fallbackId = ""): Profile {
     phone: row.phone,
     displayName: row.display_name,
     avatarUrl: row.avatar_url,
+    socials: row.socials ?? null,
+    interests: row.interests ?? null,
     createdAt: row.created_at ? new Date(row.created_at).getTime() : 0,
   };
 }
@@ -105,12 +111,12 @@ function mapCard(row: CardRow): Card {
 const CARD_SELECT = `
   id, owner_id, title, description, location, spots, permission, category, color,
   created_at, expires_at, duration_days, archived,
-  owner:profiles!cards_owner_id_fkey(id, phone, display_name, avatar_url, created_at),
+  owner:profiles!cards_owner_id_fkey(id, phone, display_name, avatar_url, socials, interests, created_at),
   joiners:joiners(user_id, role, joined_at,
-    user:profiles!joiners_user_id_fkey(id, phone, display_name, avatar_url, created_at)
+    user:profiles!joiners_user_id_fkey(id, phone, display_name, avatar_url, socials, interests, created_at)
   ),
   requests:join_requests(user_id, requested_at,
-    user:profiles!join_requests_user_id_fkey(id, phone, display_name, avatar_url, created_at)
+    user:profiles!join_requests_user_id_fkey(id, phone, display_name, avatar_url, socials, interests, created_at)
   )
 `;
 

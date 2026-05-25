@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 import { ParisMap } from "@/components/ParisMap";
 import { fetchTrackRecord } from "@/lib/db";
 import { useRealtimeCards } from "@/lib/realtime";
-import type { TrackEntry } from "@/lib/types";
+import type { Profile, TrackEntry } from "@/lib/types";
 import { expiresIn, timeAgo } from "@/lib/time";
 import { downloadCarnetPoster, exportCarnetPrintable, shareCard } from "@/lib/share";
 import { ACTIVITY_LABEL, activityFromTitle, type Activity } from "@/lib/vibe";
@@ -15,14 +15,32 @@ import { cardColor, isDark } from "@/lib/color";
 
 type Tab = "track" | "map" | "export";
 
+// API returns snake_case rows from Supabase; light client-side mapping.
+function mapProfileRow(p: Record<string, unknown>): Profile {
+  return {
+    id: String(p.id ?? ""),
+    phone: (p.phone as string | null) ?? null,
+    displayName: String(p.display_name ?? ""),
+    avatarUrl: (p.avatar_url as string | null) ?? null,
+    socials: (p.socials as Profile["socials"]) ?? null,
+    interests: (p.interests as string[] | null) ?? null,
+    createdAt: p.created_at ? new Date(String(p.created_at)).getTime() : 0,
+  };
+}
+
 export default function CarnetPage() {
   const { user, isLoaded } = useUser();
   const [tab, setTab] = useState<Tab>("track");
   const [track, setTrack] = useState<TrackEntry[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   const refresh = useCallback(() => {
     if (!user) return;
     fetchTrackRecord(user.id).then(setTrack).catch(() => setTrack([]));
+    fetch("/api/profile/me")
+      .then((r) => r.json())
+      .then((j) => j?.profile && setProfile(mapProfileRow(j.profile)))
+      .catch(() => {});
   }, [user]);
 
   useEffect(() => {
@@ -58,10 +76,10 @@ export default function CarnetPage() {
   }
 
   const displayName =
-    [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
+    profile?.displayName ||
     user.username ||
-    user.primaryEmailAddress?.emailAddress?.split("@")[0] ||
-    `Paris-${user.id.slice(-4)}`;
+    [user.firstName, user.lastName].filter(Boolean).join("").toLowerCase().trim() ||
+    `paris-${user.id.slice(-4)}`;
 
   return (
     <div className="app-shell">
@@ -79,11 +97,32 @@ export default function CarnetPage() {
           <div className="flex-1 min-w-0">
             <div className="mono text-[10px] tracking-widest opacity-60">CARNET</div>
             <h1 className="editorial font-black text-[34px] sm:text-[56px] leading-none mt-1 truncate">
-              {displayName}
+              @{displayName}
             </h1>
             <div className="mono text-[11px] mt-2 opacity-70">
               {counts.total} ENTR{counts.total === 1 ? "Y" : "IES"} · {counts.created} CREATED · {counts.joined} JOINED
             </div>
+            {profile?.interests && profile.interests.length > 0 && (
+              <div className="mono text-[10px] tracking-widest mt-2 opacity-70 flex flex-wrap gap-1">
+                {profile.interests.map((i) => (
+                  <span key={i} className="border border-ink px-1.5 py-0.5">
+                    {i.toUpperCase()}
+                  </span>
+                ))}
+              </div>
+            )}
+            {profile?.socials && Object.values(profile.socials).some(Boolean) && (
+              <div className="mono text-[10px] tracking-widest mt-2 opacity-70 flex flex-wrap gap-3">
+                {profile.socials.instagram && <span>@{profile.socials.instagram} · IG</span>}
+                {profile.socials.telegram && <span>@{profile.socials.telegram} · TG</span>}
+                {profile.socials.whatsapp && <span>+{profile.socials.whatsapp} · WA</span>}
+                {profile.socials.site && (
+                  <a href={profile.socials.site} target="_blank" rel="noreferrer" className="underline">
+                    ↗ {profile.socials.site.replace(/^https?:\/\//, "")}
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -234,7 +273,7 @@ function TrackRow({
             {card.title}
           </h2>
           <div className="mt-3 mono text-[11px] opacity-70">
-            {isCreator ? "BY YOU" : `BY ${card.owner.displayName.toUpperCase()}`} · {card.joiners.length}/{card.spots} SPOTS · {expiresIn(card.expiresAt).toUpperCase()}
+            {isCreator ? "BY YOU" : `BY @${card.owner.displayName}`} · {card.joiners.length}/{card.spots} PEOPLE · {expiresIn(card.expiresAt).toUpperCase()}
           </div>
         </div>
       </Link>

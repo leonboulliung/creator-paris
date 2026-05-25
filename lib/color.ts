@@ -40,6 +40,14 @@ export function cardColor(card: {
   title?: string;
 }): string {
   if (card.color) return card.color;
+  return categoryColor(card);
+}
+
+/** Category-derived color only (ignores explicit author color). */
+export function categoryColor(card: {
+  category?: string | null;
+  title?: string;
+}): string {
   const cat = (card.category as Activity | null) || activityFromTitle(card.title || "");
   return CATEGORY_FALLBACK[cat] || CATEGORY_FALLBACK.default;
 }

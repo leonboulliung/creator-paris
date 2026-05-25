@@ -150,18 +150,24 @@ body {
 }
 .leaflet-marker-icon, .leaflet-marker-shadow { outline: none; }
 
-/* Custom pin */
+/* Custom pin — two-ring structure:
+   inner disc (user's custom color) + outer ring (category color) + white halo. */
 .cp-pin {
-  width: 12px; height: 12px; border-radius: 50%;
-  background: #0a0a0a; box-shadow: 0 0 0 3px rgba(255,255,255,0.95);
-  transform: translate(-6px, -6px);
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #0a0a0a;
+  /* box-shadow stacks: white inner separator, category ring, white outer halo */
+  box-shadow:
+    0 0 0 1.5px #ffffff,
+    0 0 0 3.5px #0a0a0a,
+    0 0 0 5px rgba(255,255,255,0.95);
+  transform: translate(-5px, -5px);
   position: relative;
 }
 .cp-pin.fresh::after {
   content: "";
-  position: absolute; inset: -3px;
+  position: absolute; inset: -7px;
   border-radius: 50%;
-  border: 2px solid rgba(10,10,10,0.6);
+  border: 2px solid rgba(10,10,10,0.55);
   animation: pulseRing 1.4s ease-out infinite;
 }
 @keyframes pulseRing {

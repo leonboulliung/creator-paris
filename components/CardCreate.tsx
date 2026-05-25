@@ -302,9 +302,9 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
               />
             </div>
 
-            {/* SPOTS */}
+            {/* PEOPLE */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">SPOTS</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">PEOPLE</label>
               <div className="mt-1 flex flex-wrap gap-2">
                 {SPOT_CHIPS.map((n) => {
                   const active = !spotsCustom && spots === n;
