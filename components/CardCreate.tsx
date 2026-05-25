@@ -177,62 +177,70 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
   const canSubmit = !!title.trim() && !!latlng && !!startsAt && !submitting;
   const chipBase = "px-3 py-2 border border-ink mono text-[10px] tracking-widest";
 
-  // The color-swatch + close cluster is identical in both layouts.
+  // Top-bar only carries CLOSE now — the colour picker lives inside the
+  // live preview banner (the actual colour surface).
   const topBarRight = (
-    <div className="flex items-center gap-3">
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setColorOpen((o) => !o)}
-          className="w-7 h-7 border border-ink hover:scale-105 transition"
-          style={{ backgroundColor: previewColor }}
-          title="Pick a color"
-          aria-label="Pick a color"
-        />
-        {colorOpen && (
-          <div className="absolute right-0 top-full mt-2 z-50 bg-paper border border-ink p-2 w-[208px] animate-fadeIn shadow-xl">
-            <div className="grid grid-cols-6 gap-1">
-              {COLOR_PALETTE.map((c) => {
-                const active = color === c.value;
-                return (
-                  <button
-                    key={c.value}
-                    type="button"
-                    onClick={() => { setColor(c.value); setColorOpen(false); }}
-                    title={c.label}
-                    aria-label={c.label}
-                    className={`w-7 h-7 border ${active ? "border-ink ring-2 ring-ink ring-offset-1 ring-offset-paper" : "border-ink/20 hover:border-ink"}`}
-                    style={{ backgroundColor: c.value }}
-                  />
-                );
-              })}
-            </div>
-            <div className="mt-2 flex items-center justify-between gap-2 mono text-[10px] tracking-widest">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="color"
-                  value={color || "#0a0a0a"}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-6 h-6 border border-ink p-0 cursor-pointer bg-paper"
-                />
-                CUSTOM
-              </label>
-              {color && (
-                <button
-                  type="button"
-                  onClick={() => { setColor(null); setColorOpen(false); }}
-                  className="hover:underline"
-                >
-                  CLEAR
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-      <button onClick={onClose} className="mono text-[11px] tracking-widest hover:underline">
-        CLOSE ✕
+    <button onClick={onClose} className="mono text-[11px] tracking-widest hover:underline">
+      CLOSE ✕
+    </button>
+  );
+
+  // Reusable colour-picker pill that sits inside the preview banner.
+  const colorPickerInBanner = (
+    <div className="absolute bottom-3 right-3 z-20">
+      <button
+        type="button"
+        onClick={() => setColorOpen((o) => !o)}
+        className={`mono text-[10px] tracking-widest px-2.5 py-1 border transition flex items-center gap-1.5 ${
+          previewDark
+            ? "border-paper/60 text-paper bg-ink/30 hover:bg-paper hover:text-ink"
+            : "border-ink/60 text-ink bg-paper/40 hover:bg-ink hover:text-paper"
+        }`}
+        aria-label="Pick a color"
+      >
+        <span className="block w-2.5 h-2.5 border border-current rounded-full" />
+        COLOR
       </button>
+      {colorOpen && (
+        <div className="absolute right-0 top-full mt-2 z-50 bg-paper border border-ink p-2 w-[208px] animate-fadeIn shadow-xl">
+          <div className="grid grid-cols-6 gap-1">
+            {COLOR_PALETTE.map((c) => {
+              const active = color === c.value;
+              return (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => { setColor(c.value); setColorOpen(false); }}
+                  title={c.label}
+                  aria-label={c.label}
+                  className={`w-7 h-7 border ${active ? "border-ink ring-2 ring-ink ring-offset-1 ring-offset-paper" : "border-ink/20 hover:border-ink"}`}
+                  style={{ backgroundColor: c.value }}
+                />
+              );
+            })}
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2 mono text-[10px] tracking-widest">
+            <label className="flex items-center gap-2 cursor-pointer text-ink">
+              <input
+                type="color"
+                value={color || "#0a0a0a"}
+                onChange={(e) => setColor(e.target.value)}
+                className="w-6 h-6 border border-ink p-0 cursor-pointer bg-paper"
+              />
+              CUSTOM
+            </label>
+            {color && (
+              <button
+                type="button"
+                onClick={() => { setColor(null); setColorOpen(false); }}
+                className="hover:underline text-ink"
+              >
+                CLEAR
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -281,23 +289,22 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
 
           {/* preview banner */}
           <div
-            className="h-24 transition-colors duration-300 shrink-0"
+            className="relative h-36 transition-colors duration-300 shrink-0"
             style={{ backgroundColor: previewColor }}
           >
-            <div className="h-full flex items-end p-4">
-              <div>
-                <div
-                  className={`mono text-[10px] tracking-widest px-1.5 py-0.5 inline-block ${previewDark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
-                >
-                  LIVE PREVIEW
-                </div>
-                <div
-                  className={`editorial font-black text-[18px] mt-1.5 max-w-[80%] line-clamp-1 ${previewDark ? "text-paper" : "text-ink"}`}
-                >
-                  {title || "What's your one thing this week?"}
-                </div>
+            <div className="h-full flex flex-col justify-end p-4 pr-24">
+              <div
+                className={`mono text-[10px] tracking-widest px-1.5 py-0.5 inline-block self-start ${previewDark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+              >
+                LIVE PREVIEW
+              </div>
+              <div
+                className={`editorial font-black text-[17px] sm:text-[18px] mt-2 leading-[1.15] line-clamp-2 pb-0.5 ${previewDark ? "text-paper" : "text-ink"}`}
+              >
+                {title || "What's your one thing this week?"}
               </div>
             </div>
+            {colorPickerInBanner}
           </div>
 
           {/* form body */}
@@ -595,20 +602,19 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
           className="relative h-40 sm:h-56 transition-colors duration-300"
           style={{ backgroundColor: previewColor }}
         >
-          <div className="absolute inset-0 flex items-end p-4 sm:p-6">
-            <div>
-              <div
-                className={`mono text-[10px] tracking-widest px-1.5 py-0.5 inline-block ${previewDark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
-              >
-                LIVE PREVIEW
-              </div>
-              <div
-                className={`editorial font-black text-[22px] sm:text-[30px] mt-2 max-w-[80%] ${previewDark ? "text-paper" : "text-ink"}`}
-              >
-                {title || "What's your one thing this week?"}
-              </div>
+          <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 pr-24 sm:pr-28">
+            <div
+              className={`mono text-[10px] tracking-widest px-1.5 py-0.5 inline-block self-start ${previewDark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+            >
+              LIVE PREVIEW
+            </div>
+            <div
+              className={`editorial font-black text-[22px] sm:text-[30px] mt-2 leading-[1.15] line-clamp-3 pb-1 ${previewDark ? "text-paper" : "text-ink"}`}
+            >
+              {title || "What's your one thing this week?"}
             </div>
           </div>
+          {colorPickerInBanner}
         </div>
 
         <div className="px-4 sm:px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl">

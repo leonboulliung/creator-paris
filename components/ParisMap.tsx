@@ -240,10 +240,17 @@ export function ParisMap({
         className: "cp-pin-tooltip",
       });
       m.on("click", (e: L.LeafletMouseEvent) => {
+        // Hide the hover tooltip — the click preview takes over.
+        m.closeTooltip();
         if (!ref.current || !mapRef.current) return;
         const pt = mapRef.current.latLngToContainerPoint([c.location.lat, c.location.lng]);
         setPreview({ card: c, x: pt.x, y: pt.y });
         L.DomEvent.stopPropagation(e);
+      });
+      // Whenever the user mouses off and back on, the tooltip can come back —
+      // but as long as the click preview is open we keep it suppressed.
+      m.on("tooltipopen", () => {
+        if (preview && preview.card.id === c.id) m.closeTooltip();
       });
       m.addTo(layerRef.current!);
     }
