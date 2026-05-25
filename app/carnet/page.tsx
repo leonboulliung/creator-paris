@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { Header } from "@/components/Header";
-import { ParisMap } from "@/components/ParisMap";
 import { fetchTrackRecord } from "@/lib/db";
 import { useRealtimeCards } from "@/lib/realtime";
 import type { Profile, TrackEntry } from "@/lib/types";
@@ -14,7 +13,7 @@ import { ACTIVITY_LABEL, activityFromTitle, type Activity } from "@/lib/vibe";
 import { cardColor, categoryColor, isDark } from "@/lib/color";
 import { Constellation } from "@/components/Constellation";
 
-type Tab = "track" | "carnet" | "map";
+type Tab = "track" | "carnet";
 
 interface MonthGroup {
   key: string;
@@ -138,7 +137,7 @@ export default function CarnetPage() {
   return (
     <div className="app-shell">
       <Header />
-      <main className={tab === "map" ? "no-scroll flex flex-col" : "flex flex-col"}>
+      <main className="flex flex-col">
 
       <div className="border-b border-ink px-4 sm:px-8 py-6 shrink-0">
         <div className="flex items-center gap-4">
@@ -182,7 +181,7 @@ export default function CarnetPage() {
       </div>
 
       <div className="border-b border-ink px-4 sm:px-8 flex shrink-0">
-        {(["track", "carnet", "map"] as Tab[]).map((t) => (
+        {(["track", "carnet"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -193,7 +192,7 @@ export default function CarnetPage() {
         ))}
       </div>
 
-      <div className={tab === "map" ? "flex-1 min-h-0" : "flex-1 min-h-0 overflow-y-auto"}>
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {tab === "track" && (
           <div>
             {track.length === 0 ? (
@@ -328,18 +327,6 @@ export default function CarnetPage() {
                 </div>
               </>
             )}
-          </div>
-        )}
-
-        {tab === "map" && (
-          <div className="relative h-full">
-            <ParisMap cards={mapCards} gestureHandling={false} />
-            <div
-              className="absolute left-3 z-[400] mono text-[10px] tracking-widest bg-paper border border-ink px-2 py-1"
-              style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
-            >
-              YOUR CONSTELLATION · {mapCards.length} PIN{mapCards.length === 1 ? "" : "S"}
-            </div>
           </div>
         )}
 
