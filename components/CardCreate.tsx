@@ -11,8 +11,8 @@ import { combinedSearch, type LocationResult } from "@/lib/location";
 import { ParisMap } from "./ParisMap";
 
 type DayMode = "today" | "tomorrow" | "custom";
-type SpotPreset = 2 | 3 | 4 | 5 | 6 | 8;
-const SPOT_CHIPS: SpotPreset[] = [2, 3, 4, 5, 6, 8];
+type SpotPreset = 2 | 3 | 4 | 5 | 6;
+const SPOT_CHIPS: SpotPreset[] = [2, 3, 4, 5, 6];
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
 function isoDate(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -34,6 +34,10 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
   const [customDate, setCustomDate] = useState<string>("");          // YYYY-MM-DD
   const [hour, setHour] = useState<number | null>(null);
   const [customHM, setCustomHM] = useState<string>("");              // HH:MM
+  const [showCustomTime, setShowCustomTime] = useState(false);
+
+  // Color picker popover
+  const [colorOpen, setColorOpen] = useState(false);
 
   // Location autocomplete
   const [query, setQuery] = useState("");
@@ -169,12 +173,64 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
   const node = (
     <div className="fixed inset-0 z-[1200] bg-paper flex flex-col">
       <div
-        className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 shrink-0 safe-top"
+        className="relative flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 shrink-0 safe-top"
       >
         <div className="mono text-[10px] tracking-widest opacity-70">NEW · ONE THING</div>
-        <button onClick={onClose} className="mono text-[11px] tracking-widest hover:underline">
-          CLOSE ✕
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setColorOpen((o) => !o)}
+              className="w-7 h-7 border border-ink hover:scale-105 transition"
+              style={{ backgroundColor: previewColor }}
+              title="Pick a color"
+              aria-label="Pick a color"
+            />
+            {colorOpen && (
+              <div className="absolute right-0 top-full mt-2 z-50 bg-paper border border-ink p-2 w-[208px] animate-fadeIn shadow-xl">
+                <div className="grid grid-cols-6 gap-1">
+                  {COLOR_PALETTE.map((c) => {
+                    const active = color === c.value;
+                    return (
+                      <button
+                        key={c.value}
+                        type="button"
+                        onClick={() => { setColor(c.value); setColorOpen(false); }}
+                        title={c.label}
+                        aria-label={c.label}
+                        className={`w-7 h-7 border ${active ? "border-ink ring-2 ring-ink ring-offset-1 ring-offset-paper" : "border-ink/20 hover:border-ink"}`}
+                        style={{ backgroundColor: c.value }}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2 mono text-[10px] tracking-widest">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="color"
+                      value={color || "#0a0a0a"}
+                      onChange={(e) => setColor(e.target.value)}
+                      className="w-6 h-6 border border-ink p-0 cursor-pointer bg-paper"
+                    />
+                    CUSTOM
+                  </label>
+                  {color && (
+                    <button
+                      type="button"
+                      onClick={() => { setColor(null); setColorOpen(false); }}
+                      className="hover:underline"
+                    >
+                      CLEAR
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <button onClick={onClose} className="mono text-[11px] tracking-widest hover:underline">
+            CLOSE ✕
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -223,13 +279,13 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
                     <button
                       key={c}
                       type="button"
-                      onClick={() => setCategory(active ? null : c)}
-                      className={`aspect-[3/2] border border-ink flex flex-col items-center justify-center gap-1 transition ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
+                      onClick={() => setCategory(c)}
+                      className={`group aspect-[3/2] border border-ink flex flex-col items-center justify-center gap-1 transition ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
                       aria-pressed={active}
                     >
                       <span
-                        className="text-[22px] leading-none"
-                        style={{ color: active ? "#fff" : ACTIVITY_ACCENT[c] }}
+                        className={`text-[22px] leading-none ${active ? "text-paper" : "group-hover:text-paper"}`}
+                        style={!active ? { color: ACTIVITY_ACCENT[c] } : undefined}
                       >
                         {ACTIVITY_GLYPH[c]}
                       </span>
@@ -239,53 +295,6 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
                     </button>
                   );
                 })}
-              </div>
-            </div>
-
-            {/* COLOR */}
-            <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">
-                COLOR
-                <span className="opacity-50 ml-2 normal-case tracking-normal">
-                  Dominant tint on the card and on the map.
-                </span>
-              </label>
-              <div className="mt-1 grid grid-cols-6 gap-2">
-                {COLOR_PALETTE.map((c) => {
-                  const active = color === c.value;
-                  return (
-                    <button
-                      key={c.value}
-                      type="button"
-                      onClick={() => setColor(active ? null : c.value)}
-                      title={c.label}
-                      className={`aspect-square border ${active ? "border-ink ring-2 ring-ink ring-offset-2 ring-offset-paper" : "border-ink/30 hover:border-ink"}`}
-                      style={{ backgroundColor: c.value }}
-                      aria-pressed={active}
-                      aria-label={c.label}
-                    />
-                  );
-                })}
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <label className="mono text-[10px] tracking-widest opacity-60 cursor-pointer flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={color || "#0a0a0a"}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="w-7 h-7 border border-ink p-0 cursor-pointer bg-paper"
-                  />
-                  CUSTOM
-                </label>
-                {color && (
-                  <button
-                    type="button"
-                    onClick={() => setColor(null)}
-                    className="mono text-[10px] tracking-widest opacity-60 hover:opacity-100 hover:underline"
-                  >
-                    CLEAR
-                  </button>
-                )}
               </div>
             </div>
 
@@ -364,6 +373,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
                         // reset time when day changes
                         setHour(null);
                         setCustomHM("");
+                        setShowCustomTime(false);
                       }}
                       className={`${chipBase} ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
                     >
@@ -402,20 +412,36 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
                         <button
                           key={h}
                           type="button"
-                          onClick={() => { setHour(h); setCustomHM(""); }}
+                          onClick={() => {
+                            setHour(h);
+                            setCustomHM("");
+                            setShowCustomTime(false);
+                          }}
                           className={`${chipBase} w-12 text-center tabular-nums ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
                         >
                           {String(h).padStart(2, "0")}H
                         </button>
                       );
                     })}
-                    <input
-                      type="time"
-                      value={customHM}
-                      onChange={(e) => { setCustomHM(e.target.value); setHour(null); }}
-                      className="input w-28"
-                      placeholder="HH:MM"
-                    />
+                    {!showCustomTime ? (
+                      <button
+                        type="button"
+                        onClick={() => { setShowCustomTime(true); setHour(null); }}
+                        className={`${chipBase} bg-paper hover:bg-ink hover:text-paper`}
+                      >
+                        + CUSTOM
+                      </button>
+                    ) : (
+                      <input
+                        type="time"
+                        autoFocus
+                        value={customHM}
+                        onChange={(e) => { setCustomHM(e.target.value); setHour(null); }}
+                        onBlur={() => { if (!customHM) setShowCustomTime(false); }}
+                        className="input w-28 animate-fadeIn"
+                        placeholder="HH:MM"
+                      />
+                    )}
                   </div>
                 </div>
               )}
