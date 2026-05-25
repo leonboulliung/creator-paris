@@ -8,9 +8,10 @@ import { ParisMap } from "@/components/ParisMap";
 import { fetchTrackRecord } from "@/lib/db";
 import { useRealtimeCards } from "@/lib/realtime";
 import type { TrackEntry } from "@/lib/types";
-import { expiresIn, parisHourOf, timeAgo } from "@/lib/time";
+import { expiresIn, timeAgo } from "@/lib/time";
 import { downloadCarnetPoster, exportCarnetPrintable, shareCard } from "@/lib/share";
-import { ACTIVITY_LABEL, computeVibe } from "@/lib/vibe";
+import { ACTIVITY_LABEL, activityFromTitle, type Activity } from "@/lib/vibe";
+import { cardColor, isDark } from "@/lib/color";
 
 type Tab = "track" | "map" | "export";
 
@@ -194,12 +195,9 @@ function TrackRow({
   avatarUrl?: string;
 }) {
   const { card, role, at, isCreator } = entry;
-  const vibe = computeVibe({
-    title: card.title,
-    label: card.location.label,
-    hour: parisHourOf(card.createdAt),
-    category: card.category,
-  });
+  const color = cardColor(card);
+  const dark = isDark(color);
+  const activity = (card.category as Activity | null) || activityFromTitle(card.title);
   const [busy, setBusy] = useState(false);
   const now = Date.now();
   const status = card.archived || card.expiresAt <= now ? "ARCHIVED" : "ACTIVE";
@@ -208,14 +206,17 @@ function TrackRow({
     <div className="border-b border-ink flex items-stretch">
       <Link href={`/post/${card.id}`} className="flex-1 flex items-stretch min-w-0">
         <div
-          className="w-24 sm:w-40 shrink-0 noise relative"
-          style={{ backgroundImage: vibe.cssBackground }}
+          className="w-24 sm:w-40 shrink-0 relative"
+          style={{ backgroundColor: color }}
         >
-          {vibe.isNight && <div className="absolute inset-0 stars" />}
-          <div className="absolute left-2 top-2 mono text-[9px] tracking-widest text-paper bg-ink/85 px-1.5 py-0.5">
-            {ACTIVITY_LABEL[vibe.activity]}
+          <div
+            className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+          >
+            {ACTIVITY_LABEL[activity]}
           </div>
-          <div className="absolute right-2 bottom-2 mono text-[9px] tracking-widest text-paper bg-ink/85 px-1.5 py-0.5">
+          <div
+            className={`absolute right-2 bottom-2 mono text-[9px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+          >
             {status}
           </div>
         </div>

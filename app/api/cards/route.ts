@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     permission?: "public" | "request";
     startsAt?: string; // ISO 8601
     category?: string;
+    color?: string;
   };
   try {
     body = await req.json();
@@ -37,6 +38,9 @@ export async function POST(req: Request) {
   const spots = Math.max(1, Math.min(99, Math.floor(body.spots || 1)));
   const permission = body.permission === "request" ? "request" : "public";
   const category = body.category && ALLOWED_CATS.has(body.category) ? body.category : null;
+  // Accept any CSS-style hex/rgb. Validate loosely to keep schemas honest.
+  const colorRaw = (body.color || "").trim();
+  const color = /^#([0-9a-fA-F]{3}){1,2}$/.test(colorRaw) ? colorRaw.toLowerCase() : null;
   const location = body.location;
 
   if (!title) return NextResponse.json({ error: "title_required" }, { status: 400 });
@@ -84,6 +88,7 @@ export async function POST(req: Request) {
       spots,
       permission,
       category,
+      color,
       // `expires_at` column is repurposed: it now stores the event START time.
       // Cards auto-archive once this passes — which matches the new rule.
       // `duration_days` is vestigial; we send 1 to satisfy the legacy CHECK.

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import type { Card } from "@/lib/types";
-import { expiresIn, parisHourOf, timeAgo } from "@/lib/time";
-import { computeVibe, ACTIVITY_LABEL } from "@/lib/vibe";
+import { expiresIn, timeAgo } from "@/lib/time";
+import { ACTIVITY_LABEL, activityFromTitle, type Activity } from "@/lib/vibe";
+import { cardColor, isDark } from "@/lib/color";
 
 export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
   const [, force] = useState(0);
@@ -14,12 +15,9 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
     return () => window.clearInterval(id);
   }, []);
 
-  const vibe = computeVibe({
-    title: card.title,
-    label: card.location.label,
-    hour: parisHourOf(card.createdAt),
-    category: card.category,
-  });
+  const color = cardColor(card);
+  const dark = isDark(color);
+  const activity = (card.category as Activity | null) || activityFromTitle(card.title);
   const { user } = useUser();
   const mine = user?.id === card.ownerId;
 
@@ -30,13 +28,14 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
     >
       <div className="flex items-stretch gap-0">
         <div
-          className="relative w-24 sm:w-40 shrink-0 noise"
-          style={{ backgroundImage: vibe.cssBackground }}
+          className="relative w-24 sm:w-40 shrink-0"
+          style={{ backgroundColor: color }}
           aria-hidden
         >
-          {vibe.isNight && <div className="absolute inset-0 stars" />}
-          <div className="absolute left-2 top-2 mono text-[9px] tracking-widest text-paper bg-ink/85 px-1.5 py-0.5">
-            {ACTIVITY_LABEL[vibe.activity]}
+          <div
+            className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+          >
+            {ACTIVITY_LABEL[activity]}
           </div>
         </div>
 

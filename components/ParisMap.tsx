@@ -8,6 +8,7 @@ import { PARIS_BOUNDS, PARIS_CENTER } from "@/lib/quartiers";
 import type { Card } from "@/lib/types";
 import { parisHour } from "@/lib/time";
 import { TOD_LABEL, timeOfDayFromHour, type TimeOfDay } from "@/lib/vibe";
+import { cardColor } from "@/lib/color";
 
 // Module-scope flag — the plugin only needs registering once per page.
 let gestureHandlerRegistered = false;
@@ -219,9 +220,10 @@ export function ParisMap({
     layerRef.current.clearLayers();
     for (const c of cards) {
       const isFresh = freshIds?.has(c.id);
+      const color = cardColor(c);
       const icon = L.divIcon({
         className: "",
-        html: `<div class="cp-pin ${isFresh ? "fresh" : ""} ${highlightId === c.id ? "ring-2" : ""}"></div>`,
+        html: `<div class="cp-pin ${isFresh ? "fresh" : ""} ${highlightId === c.id ? "ring-2" : ""}" style="background:${color}"></div>`,
         iconSize: [12, 12],
         iconAnchor: [6, 6],
       });

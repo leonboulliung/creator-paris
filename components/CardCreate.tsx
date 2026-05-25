@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ACTIVITY_ACCENT, ACTIVITY_GLYPH, ACTIVITY_LABEL, CATEGORY_ORDER, computeVibe, type Activity } from "@/lib/vibe";
+import { ACTIVITY_ACCENT, ACTIVITY_GLYPH, ACTIVITY_LABEL, CATEGORY_ORDER, type Activity } from "@/lib/vibe";
+import { COLOR_PALETTE, cardColor, isDark } from "@/lib/color";
 import type { Permission } from "@/lib/types";
 import { startsLabel } from "@/lib/time";
 import { combinedSearch, type LocationResult } from "@/lib/location";
@@ -22,6 +23,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<Activity | null>(null);
+  const [color, setColor] = useState<string | null>(null);
 
   const [spots, setSpots] = useState<number>(4);
   const [spotsCustom, setSpotsCustom] = useState<boolean>(false);
@@ -86,15 +88,11 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
 
   const todayValue = useMemo(() => isoDate(new Date()), []);
 
-  const vibePreview = useMemo(
-    () =>
-      computeVibe({
-        title: title || "What's your one thing this week?",
-        label: picked?.label || query || "Paris",
-        category,
-      }),
-    [title, picked, query, category],
+  const previewColor = useMemo(
+    () => cardColor({ color, category, title }),
+    [color, category, title],
   );
+  const previewDark = useMemo(() => isDark(previewColor), [previewColor]);
 
   // ====== location autocomplete with debounced async fetch ======
 
@@ -144,6 +142,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
           spots,
           permission,
           category,
+          color,
           startsAt: startsAt.toISOString(),
         }),
       });
@@ -179,18 +178,21 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* vibe preview */}
+        {/* solid color preview */}
         <div
-          className="relative h-40 sm:h-56 noise"
-          style={{ backgroundImage: vibePreview.cssBackground }}
+          className="relative h-40 sm:h-56 transition-colors duration-300"
+          style={{ backgroundColor: previewColor }}
         >
-          {vibePreview.isNight && <div className="absolute inset-0 stars" />}
           <div className="absolute inset-0 flex items-end p-4 sm:p-6">
             <div>
-              <div className="mono text-[10px] tracking-widest bg-ink text-paper px-1.5 py-0.5 inline-block">
-                LIVE VIBE PREVIEW
+              <div
+                className={`mono text-[10px] tracking-widest px-1.5 py-0.5 inline-block ${previewDark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+              >
+                LIVE PREVIEW
               </div>
-              <div className="editorial font-black text-paper text-[22px] sm:text-[30px] mt-2 max-w-[80%] drop-shadow-md">
+              <div
+                className={`editorial font-black text-[22px] sm:text-[30px] mt-2 max-w-[80%] ${previewDark ? "text-paper" : "text-ink"}`}
+              >
                 {title || "What's your one thing this week?"}
               </div>
             </div>
@@ -237,6 +239,53 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* COLOR */}
+            <div>
+              <label className="mono text-[10px] tracking-widest opacity-70">
+                COLOR
+                <span className="opacity-50 ml-2 normal-case tracking-normal">
+                  Dominant tint on the card and on the map.
+                </span>
+              </label>
+              <div className="mt-1 grid grid-cols-6 gap-2">
+                {COLOR_PALETTE.map((c) => {
+                  const active = color === c.value;
+                  return (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setColor(active ? null : c.value)}
+                      title={c.label}
+                      className={`aspect-square border ${active ? "border-ink ring-2 ring-ink ring-offset-2 ring-offset-paper" : "border-ink/30 hover:border-ink"}`}
+                      style={{ backgroundColor: c.value }}
+                      aria-pressed={active}
+                      aria-label={c.label}
+                    />
+                  );
+                })}
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <label className="mono text-[10px] tracking-widest opacity-60 cursor-pointer flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={color || "#0a0a0a"}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="w-7 h-7 border border-ink p-0 cursor-pointer bg-paper"
+                  />
+                  CUSTOM
+                </label>
+                {color && (
+                  <button
+                    type="button"
+                    onClick={() => setColor(null)}
+                    className="mono text-[10px] tracking-widest opacity-60 hover:opacity-100 hover:underline"
+                  >
+                    CLEAR
+                  </button>
+                )}
               </div>
             </div>
 

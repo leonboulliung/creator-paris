@@ -38,6 +38,8 @@ export interface Card {
   permission: Permission;
   /** Author-picked category. Falls back to title-derived activity when null. */
   category: string | null;
+  /** Author-picked color. Drives the dominant visual (strip, pin, hero). */
+  color: string | null;
   createdAt: number;
   /** Repurposed column: when the event actually starts. */
   expiresAt: number;

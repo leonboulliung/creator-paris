@@ -1,9 +1,8 @@
 "use client";
 
 import type { Card } from "./types";
-import { computeVibe } from "./vibe";
 import { PARIS_BOUNDS } from "./quartiers";
-import { parisHourOf } from "./time";
+import { cardColor, isDark } from "./color";
 
 const W = 1080;
 const H = 1350;
@@ -18,75 +17,9 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-function drawVibeHero(ctx: CanvasRenderingContext2D, card: Card, height: number) {
-  const v = computeVibe({
-    title: card.title,
-    label: card.location.label,
-    hour: parisHourOf(card.createdAt),
-    category: card.category,
-  });
-  // sky linear gradient
-  const angleRad = (v.angle - 90) * (Math.PI / 180);
-  // construct a linear gradient roughly along angle
-  const cx = W / 2;
-  const cy = height / 2;
-  const r = Math.max(W, height);
-  const x0 = cx - Math.cos(angleRad) * r;
-  const y0 = cy - Math.sin(angleRad) * r;
-  const x1 = cx + Math.cos(angleRad) * r;
-  const y1 = cy + Math.sin(angleRad) * r;
-  const sky = ctx.createLinearGradient(x0, y0, x1, y1);
-  sky.addColorStop(0, v.sky.top);
-  sky.addColorStop(0.55, v.sky.mid);
-  sky.addColorStop(1, v.sky.bottom);
-  ctx.fillStyle = sky;
+function drawColorHero(ctx: CanvasRenderingContext2D, card: Card, height: number) {
+  ctx.fillStyle = cardColor(card);
   ctx.fillRect(0, 0, W, height);
-
-  // sun radial
-  const sunX = v.sun.x * W;
-  const sunY = v.sun.y * height;
-  const sunR = (v.sun.size / 100) * W;
-  const sun = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR);
-  sun.addColorStop(0, v.sun.color);
-  sun.addColorStop(0.18, v.sun.color);
-  sun.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = sun;
-  ctx.fillRect(0, 0, W, height);
-
-  // accent wash from bottom
-  const wash = ctx.createRadialGradient(W / 2, height * 1.2, 0, W / 2, height * 1.2, W * 0.9);
-  wash.addColorStop(0, v.accent + "AA");
-  wash.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = wash;
-  ctx.fillRect(0, 0, W, height);
-
-  // stars if night
-  if (v.isNight) {
-    ctx.save();
-    ctx.fillStyle = "#ffffff";
-    const seed = card.id.charCodeAt(0) || 7;
-    for (let i = 0; i < 70; i++) {
-      const sx = ((Math.sin(seed + i * 12.9) + 1) / 2) * W;
-      const sy = ((Math.cos(seed + i * 47.1) + 1) / 2) * height * 0.85;
-      const sr = 0.6 + ((i * 13) % 7) * 0.18;
-      ctx.globalAlpha = 0.4 + ((i * 7) % 6) * 0.1;
-      ctx.beginPath();
-      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  // film grain noise (subtle)
-  ctx.save();
-  ctx.globalAlpha = 0.06;
-  for (let i = 0; i < 1400; i++) {
-    const x = Math.random() * W;
-    const y = Math.random() * height;
-    ctx.fillStyle = Math.random() > 0.5 ? "#000" : "#fff";
-    ctx.fillRect(x, y, 1, 1);
-  }
-  ctx.restore();
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
@@ -218,10 +151,11 @@ export async function renderShareImage(card: Card, avatarDataUrl?: string): Prom
 
   // vibe hero (top ~58%)
   const heroH = Math.round(H * 0.58);
-  drawVibeHero(ctx, card, heroH);
+  drawColorHero(ctx, card, heroH);
+  const heroDark = isDark(cardColor(card));
 
   // top wordmark
-  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  ctx.fillStyle = heroDark ? "rgba(255,255,255,0.92)" : "rgba(10,10,10,0.92)";
   ctx.font = "700 22px 'JetBrains Mono', monospace";
   ctx.textBaseline = "top";
   ctx.fillText("CREATOR.PARIS", 48, 48);
@@ -240,7 +174,7 @@ export async function renderShareImage(card: Card, avatarDataUrl?: string): Prom
   const avY = heroH - avSize - 36;
   drawAvatar(ctx, avatar, avX, avY, avSize);
 
-  ctx.fillStyle = "#0a0a0a";
+  ctx.fillStyle = heroDark ? "#fafafa" : "#0a0a0a";
   ctx.font = "500 22px 'JetBrains Mono', monospace";
   ctx.textBaseline = "alphabetic";
   ctx.fillText(card.owner.displayName, avX + avSize + 22, avY + avSize / 2 + 8);
@@ -494,12 +428,7 @@ export function exportCarnetPrintable(cards: Card[], email: string) {
   `;
   const blocks = cards
     .map((c) => {
-      const v = computeVibe({
-        title: c.title,
-        label: c.location.label,
-        hour: parisHourOf(c.createdAt),
-        category: c.category,
-      });
+      const color = cardColor(c);
       const expiryStr = c.expiresAt
         ? new Date(c.expiresAt).toLocaleString("en-GB", {
             weekday: "short",
@@ -511,7 +440,7 @@ export function exportCarnetPrintable(cards: Card[], email: string) {
         : "";
       return `<div class="card">
         <div class="meta">${email.toUpperCase()} · ${new Date(c.createdAt).toISOString().slice(0,10)}</div>
-        <div class="hero" style="background:${v.cssBackground}"></div>
+        <div class="hero" style="background:${color}"></div>
         <h1>${escapeHtml(c.title)}</h1>
         <div class="meta">${escapeHtml(c.location.label)} · starts ${escapeHtml(expiryStr)} · ${c.joiners.length}/${c.spots} spots</div>
         <p class="desc">${escapeHtml(c.description || "")}</p>

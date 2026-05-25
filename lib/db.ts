@@ -35,6 +35,7 @@ type CardRow = {
   spots: number;
   permission: "public" | "request";
   category: string | null;
+  color: string | null;
   created_at: string;
   expires_at: string;
   duration_days: number;
@@ -91,6 +92,7 @@ function mapCard(row: CardRow): Card {
     spots: row.spots,
     permission: row.permission,
     category: row.category ?? null,
+    color: row.color ?? null,
     createdAt: new Date(row.created_at).getTime(),
     expiresAt: new Date(row.expires_at).getTime(),
     durationDays: row.duration_days,
@@ -101,7 +103,7 @@ function mapCard(row: CardRow): Card {
 }
 
 const CARD_SELECT = `
-  id, owner_id, title, description, location, spots, permission, category,
+  id, owner_id, title, description, location, spots, permission, category, color,
   created_at, expires_at, duration_days, archived,
   owner:profiles!cards_owner_id_fkey(id, phone, display_name, avatar_url, created_at),
   joiners:joiners(user_id, role, joined_at,

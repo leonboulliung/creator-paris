@@ -6,13 +6,13 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { SignUpButton, useUser } from "@clerk/nextjs";
 import { Header } from "@/components/Header";
-import { VibeBackground } from "@/components/VibeBackground";
 import { ParisMap } from "@/components/ParisMap";
+import { cardColor, isDark } from "@/lib/color";
 import { fetchCardById } from "@/lib/db";
 import { useRealtimeCards } from "@/lib/realtime";
 import type { Card } from "@/lib/types";
-import { expiresIn, parisHourOf, timeAgo } from "@/lib/time";
-import { ACTIVITY_LABEL, computeVibe } from "@/lib/vibe";
+import { expiresIn, timeAgo } from "@/lib/time";
+import { ACTIVITY_LABEL, activityFromTitle, type Activity } from "@/lib/vibe";
 import { shareCard } from "@/lib/share";
 
 export default function PostPage() {
@@ -67,12 +67,9 @@ export default function PostPage() {
     );
   }
 
-  const vibe = computeVibe({
-    title: card.title,
-    label: card.location.label,
-    hour: parisHourOf(card.createdAt),
-    category: card.category,
-  });
+  const color = cardColor(card);
+  const dark = isDark(color);
+  const activity = (card.category as Activity | null) || activityFromTitle(card.title);
   const mine = !!user && user.id === card.ownerId;
   const joined = !!user && card.joiners.some((j) => j.userId === user.id);
   const requested = !!user && card.requests.some((r) => r.userId === user.id);
@@ -178,27 +175,28 @@ export default function PostPage() {
       <Header />
       <main>
 
-      <VibeBackground
-        title={card.title}
-        label={card.location.label}
-        hour={parisHourOf(card.createdAt)}
-        category={card.category}
-        className="h-[42vh] sm:h-[52vh] border-b border-ink"
+      <div
+        className="relative h-[42vh] sm:h-[52vh] border-b border-ink"
+        style={{ backgroundColor: color }}
       >
         <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-8">
-          <div className="flex items-center gap-2 text-paper drop-shadow">
-            <span className="mono text-[10px] tracking-widest bg-ink/85 px-1.5 py-0.5">
-              {ACTIVITY_LABEL[vibe.activity]}
+          <div className={`flex items-center gap-2 ${dark ? "text-paper" : "text-ink"}`}>
+            <span
+              className={`mono text-[10px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+            >
+              {ACTIVITY_LABEL[activity]}
             </span>
             <span className="mono text-[10px] tracking-widest opacity-90">
               {card.location.label.toUpperCase()}
             </span>
           </div>
-          <h1 className="editorial font-black text-paper text-[42px] sm:text-[88px] mt-3 max-w-[20ch] drop-shadow-md">
+          <h1
+            className={`editorial font-black text-[42px] sm:text-[88px] mt-3 max-w-[20ch] ${dark ? "text-paper" : "text-ink"}`}
+          >
             {card.title}
           </h1>
         </div>
-      </VibeBackground>
+      </div>
 
       <div className="px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto space-y-6">
         <div className="flex items-center gap-3 mono text-[11px]">
