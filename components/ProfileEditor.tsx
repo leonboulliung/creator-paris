@@ -5,6 +5,7 @@ import { ACTIVITY_GLYPH, ACTIVITY_LABEL, CATEGORY_ORDER, type Activity } from "@
 import type { Profile } from "@/lib/types";
 
 const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{1,31}$/i;
+const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface Props {
   profile: Profile;
@@ -24,16 +25,41 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Username cooldown: only relevant when the user actually wants to change it.
+  const nextChangeAt = profile.usernameChangedAt
+    ? profile.usernameChangedAt + COOLDOWN_MS
+    : 0;
+  const cooldownActive = nextChangeAt > Date.now();
+  const usernameChanged =
+    username.trim().toLowerCase() !== profile.displayName.toLowerCase();
+  const cooldownBlocking = cooldownActive && usernameChanged;
+
   function toggleInterest(a: Activity) {
     setInterests((arr) =>
       arr.includes(a) ? arr.filter((x) => x !== a) : [...arr, a],
     );
   }
 
+  function formatNext(ts: number) {
+    return new Date(ts).toLocaleString("en-GB", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
   async function save() {
     const handle = username.trim().toLowerCase();
     if (!USERNAME_RE.test(handle)) {
       setError("Username must be 3–32 chars · letters, numbers, . _ - only.");
+      return;
+    }
+    if (cooldownBlocking) {
+      setError(
+        `Username can only change once per week. Next allowed: ${formatNext(nextChangeAt)}.`,
+      );
       return;
     }
     setSaving(true);
@@ -55,7 +81,19 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
       });
       const json = await res.json();
       if (!res.ok) {
-        setError((json?.error || "save failed").toString().toUpperCase());
+        if (json?.error === "username_taken") {
+          setError("That username is already taken. Try another.");
+        } else if (json?.error === "username_cooldown" && json?.nextChangeAt) {
+          setError(
+            `Username can only change once per week. Next allowed: ${formatNext(
+              new Date(json.nextChangeAt).getTime(),
+            )}.`,
+          );
+        } else if (json?.error === "invalid_username") {
+          setError("Username format invalid. Letters, numbers, . _ - only.");
+        } else {
+          setError((json?.error || "save failed").toString().toUpperCase());
+        }
         return;
       }
       onSaved();
@@ -91,8 +129,18 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
               />
             </div>
             <p className="mono text-[10px] opacity-50 mt-1">
-              3–32 chars · letters, numbers, . _ -
+              3–32 chars · letters, numbers, . _ - · must be unique
             </p>
+            {cooldownActive && (
+              <p
+                className={`mono text-[10px] mt-1 ${
+                  cooldownBlocking ? "text-red-700" : "opacity-50"
+                }`}
+              >
+                Username can change 1× per week. Next allowed:{" "}
+                {formatNext(nextChangeAt)}.
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">

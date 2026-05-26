@@ -21,6 +21,8 @@ export interface Profile {
   socials: Socials | null;
   interests: string[] | null;
   createdAt: number;
+  /** Last time the user changed their `displayName`. Drives the 7-day cooldown. */
+  usernameChangedAt?: number | null;
 }
 
 export interface CardJoiner {

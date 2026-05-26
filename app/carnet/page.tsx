@@ -55,6 +55,9 @@ function mapProfileRow(p: Record<string, unknown>): Profile {
     socials: (p.socials as Profile["socials"]) ?? null,
     interests: (p.interests as string[] | null) ?? null,
     createdAt: p.created_at ? new Date(String(p.created_at)).getTime() : 0,
+    usernameChangedAt: p.username_changed_at
+      ? new Date(String(p.username_changed_at)).getTime()
+      : null,
   };
 }
 

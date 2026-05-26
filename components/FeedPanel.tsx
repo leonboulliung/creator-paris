@@ -46,16 +46,26 @@ export function FeedPanel({ expanded, onExpandedChange, cards, loaded }: Props) 
   const countLabel = `${cards.length} ACTIVE`;
 
   // Shared row for expanded headers (desktop + mobile).
+  // `min-w-0` on the meta block + `shrink-0` on the close button keep the row
+  // from overflowing on narrow viewports (down to 320px iPhone-SE class).
   const expandedHeaderRow = (closeLabel: string) => (
-    <div className="shrink-0 border-b border-ink px-4 py-3 flex items-center gap-2 bg-paper">
-      <span className="mono text-[10px] tracking-widest tabular-nums">{clock}</span>
-      <span className="opacity-40">·</span>
-      <span className="mono text-[10px] tracking-widest">{TOD_LABEL[tod]}</span>
-      <span className="opacity-40">·</span>
-      <span className="mono text-[10px] tracking-widest tabular-nums">{countLabel}</span>
+    <div className="shrink-0 border-b border-ink px-3 sm:px-4 py-3 flex items-center gap-2 bg-paper">
+      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+        <span className="mono text-[10px] tracking-widest tabular-nums shrink-0">
+          {clock}
+        </span>
+        <span className="opacity-40 hidden min-[360px]:inline">·</span>
+        <span className="mono text-[10px] tracking-widest truncate hidden min-[360px]:inline">
+          {TOD_LABEL[tod]}
+        </span>
+        <span className="opacity-40">·</span>
+        <span className="mono text-[10px] tracking-widest tabular-nums shrink-0">
+          {countLabel}
+        </span>
+      </div>
       <button
         onClick={() => onExpandedChange(false)}
-        className="ml-auto mono text-[10px] tracking-widest px-2 py-1 border border-ink hover:bg-ink hover:text-paper transition"
+        className="shrink-0 mono text-[10px] tracking-widest px-2 py-1 border border-ink hover:bg-ink hover:text-paper transition"
         aria-label="Collapse list"
       >
         {closeLabel}
@@ -138,7 +148,7 @@ export function FeedPanel({ expanded, onExpandedChange, cards, loaded }: Props) 
       )}
       <div
         className="absolute inset-x-0 bottom-0 z-[600] flex flex-col bg-paper border-t border-ink shadow-[0_-8px_30px_rgba(0,0,0,0.18)] transition-[height] duration-300 ease-out overflow-hidden"
-        style={{ height: expanded ? "85dvh" : "52px" }}
+        style={{ height: expanded ? "80dvh" : "52px", maxHeight: "calc(100dvh - 80px)" }}
         aria-label="Active cards"
       >
         {expanded ? (
@@ -152,16 +162,24 @@ export function FeedPanel({ expanded, onExpandedChange, cards, loaded }: Props) 
         ) : (
           <button
             onClick={() => onExpandedChange(true)}
-            className="w-full h-full px-4 flex items-center gap-2 relative"
+            className="w-full h-full px-3 sm:px-4 flex items-center gap-2 relative"
             aria-label="Expand list"
           >
             <div className="absolute left-1/2 top-1.5 -translate-x-1/2 h-1 w-10 bg-ink/30 rounded-full" />
-            <span className="mono text-[10px] tracking-widest tabular-nums">{clock}</span>
-            <span className="opacity-40">·</span>
-            <span className="mono text-[10px] tracking-widest">{TOD_LABEL[tod]}</span>
-            <span className="opacity-40">·</span>
-            <span className="mono text-[10px] tracking-widest tabular-nums">{countLabel}</span>
-            <span className="ml-auto mono text-[10px] tracking-widest">OPEN ↑</span>
+            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+              <span className="mono text-[10px] tracking-widest tabular-nums shrink-0">
+                {clock}
+              </span>
+              <span className="opacity-40 hidden min-[360px]:inline">·</span>
+              <span className="mono text-[10px] tracking-widest truncate hidden min-[360px]:inline">
+                {TOD_LABEL[tod]}
+              </span>
+              <span className="opacity-40">·</span>
+              <span className="mono text-[10px] tracking-widest tabular-nums shrink-0">
+                {countLabel}
+              </span>
+            </div>
+            <span className="shrink-0 mono text-[10px] tracking-widest">OPEN ↑</span>
           </button>
         )}
       </div>

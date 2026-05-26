@@ -43,22 +43,43 @@ export async function ensureProfile(userId: string) {
 
   // Default handle on first creation. The onboarding flow lets the user
   // overwrite this via PATCH /api/profile/me with their chosen username.
-  const displayName =
+  // Sanitize against the same regex the API enforces.
+  const seed =
     cu.username ||
     [cu.firstName, cu.lastName].filter(Boolean).join("").toLowerCase().trim() ||
     `paris-${userId.slice(-4)}`;
+  const baseHandle = sanitizeHandle(seed) || `paris-${userId.slice(-4)}`;
 
-  const { data: created, error } = await admin
-    .from("profiles")
-    .insert({
-      id: userId,
-      phone,
-      display_name: displayName,
-      avatar_url: avatar,
-    })
-    .select()
-    .single();
+  // Walk a few candidates if there's a unique-name collision. Cheap because
+  // it's only on first sign-up per user.
+  const candidates = [
+    baseHandle,
+    `${baseHandle}-${userId.slice(-4)}`,
+    `${baseHandle}-${userId.slice(-6)}`,
+    `paris-${userId.slice(-8)}`,
+  ];
 
-  if (error) throw error;
-  return created;
+  for (const displayName of candidates) {
+    const { data: created, error } = await admin
+      .from("profiles")
+      .insert({
+        id: userId,
+        phone,
+        display_name: displayName,
+        avatar_url: avatar,
+      })
+      .select()
+      .single();
+
+    if (!error) return created;
+    // 23505 = unique_violation. Try the next candidate.
+    if (error.code !== "23505") throw error;
+  }
+  throw new Error("could_not_assign_unique_handle");
+}
+
+const HANDLE_OK = /^[a-z0-9][a-z0-9._-]{1,31}$/i;
+function sanitizeHandle(raw: string): string {
+  const cleaned = raw.toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 32);
+  return HANDLE_OK.test(cleaned) ? cleaned : "";
 }

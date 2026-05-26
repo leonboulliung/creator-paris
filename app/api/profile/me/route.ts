@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 
 const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{1,31}$/i;
 const URL_RE = /^https?:\/\//i;
+const USERNAME_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export async function GET() {
   const { userId } = await auth();
@@ -23,7 +24,7 @@ export async function POST() {
 export async function PATCH(req: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  await ensureProfile(userId);
+  const current = await ensureProfile(userId);
 
   const body = (await req.json().catch(() => ({}))) as {
     username?: string;
@@ -33,15 +34,36 @@ export async function PATCH(req: Request) {
   };
 
   const patch: Record<string, unknown> = {};
+  let usernameChanging = false;
 
   // Accept either `username` or legacy `displayName` — both map to the
   // display_name column, which we now use as the user-picked handle.
-  const handle = (body.username ?? body.displayName ?? "").trim();
+  const handle = (body.username ?? body.displayName ?? "").trim().toLowerCase();
   if (handle) {
     if (!USERNAME_RE.test(handle)) {
       return NextResponse.json({ error: "invalid_username" }, { status: 400 });
     }
-    patch.display_name = handle.toLowerCase();
+
+    const existingName = String(current.display_name ?? "").toLowerCase();
+    if (handle !== existingName) {
+      // 1× pro Woche cooldown — only enforced when the name actually changes.
+      const lastChanged = current.username_changed_at
+        ? new Date(current.username_changed_at).getTime()
+        : 0;
+      const nextAllowed = lastChanged + USERNAME_COOLDOWN_MS;
+      if (lastChanged && Date.now() < nextAllowed) {
+        return NextResponse.json(
+          {
+            error: "username_cooldown",
+            nextChangeAt: new Date(nextAllowed).toISOString(),
+          },
+          { status: 429 },
+        );
+      }
+      patch.display_name = handle;
+      patch.username_changed_at = new Date().toISOString();
+      usernameChanging = true;
+    }
   }
 
   if (body.socials && typeof body.socials === "object") {
@@ -80,10 +102,10 @@ export async function PATCH(req: Request) {
     .eq("id", userId);
   if (error) {
     if (error.code === "23505") {
-      // unique violation if we ever enforce uniqueness
+      // Unique-violation on lower(display_name).
       return NextResponse.json({ error: "username_taken" }, { status: 409 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, usernameChanged: usernameChanging });
 }

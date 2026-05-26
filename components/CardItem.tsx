@@ -51,7 +51,7 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
             {card.title}
           </h2>
 
-          <div className="mt-3 flex items-center justify-between mono text-[11px]">
+          <div className="mt-3 mono text-[11px]">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="tag">
                 {card.permission === "public" ? "PUBLIC JOIN" : "REQUEST"}
@@ -70,7 +70,7 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
                 </span>
               )}
             </div>
-            <div className="opacity-70 truncate max-w-[140px]">
+            <div className="opacity-70 truncate mt-1.5">
               @{card.owner.displayName}
             </div>
           </div>
