@@ -53,6 +53,7 @@ function mapProfileRow(p: Record<string, unknown>): Profile {
     avatarUrl: (p.avatar_url as string | null) ?? null,
     socials: (p.socials as Profile["socials"]) ?? null,
     interests: (p.interests as string[] | null) ?? null,
+    bio: (p.bio as string | null) ?? null,
     createdAt: p.created_at ? new Date(String(p.created_at)).getTime() : 0,
     usernameChangedAt: p.username_changed_at
       ? new Date(String(p.username_changed_at)).getTime()
@@ -164,6 +165,9 @@ export default function CarnetPage() {
             <h1 className="editorial font-black text-[34px] sm:text-[56px] leading-[1.05] mt-1 pb-1 truncate">
               @{displayName}
             </h1>
+            {profile?.bio && (
+              <p className="mt-2 text-[14px] leading-[1.4] max-w-xl">{profile.bio}</p>
+            )}
             <div className="mono text-[11px] mt-2 opacity-70">
               {counts.total} ENTR{counts.total === 1 ? "Y" : "IES"} · {counts.created} CREATED · {counts.joined} JOINED
             </div>

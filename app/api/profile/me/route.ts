@@ -32,6 +32,7 @@ export async function PATCH(req: Request) {
     displayName?: string;
     socials?: Record<string, string>;
     interests?: string[];
+    bio?: string | null;
   };
 
   const patch: Record<string, unknown> = {};
@@ -88,6 +89,13 @@ export async function PATCH(req: Request) {
     // Free-form tags. Cap at 10 so profiles stay readable.
     const cleaned = normalizeTags(body.interests, 10);
     patch.interests = cleaned.length ? cleaned : null;
+  }
+
+  if (typeof body.bio === "string") {
+    const cleaned = body.bio.trim().slice(0, 200);
+    patch.bio = cleaned.length ? cleaned : null;
+  } else if (body.bio === null) {
+    patch.bio = null;
   }
 
   if (!Object.keys(patch).length) return NextResponse.json({ ok: true });

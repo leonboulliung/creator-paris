@@ -111,15 +111,33 @@ export const QUARTIERS: Quartier[] = [
   { name: "Ivry-sur-Seine", lat: 48.815, lng: 2.387 },
 ];
 
+/**
+ * Normalize for tolerant matching: strip accents, collapse hyphens/spaces
+ * to single spaces, lowercase. So "Le-Marais", "LE MARAIS", "le marais" all
+ * compare equal — needed because the AI sometimes hyphenates queries (since
+ * tags use hyphens), or strips accents.
+ */
+function normalizeName(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // strip combining diacritics
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function searchQuartiers(q: string, limit: number = 8): Quartier[] {
-  const s = q.trim().toLowerCase();
+  const s = normalizeName(q);
   if (!s) return [];
+  const exact: Quartier[] = [];
   const starts: Quartier[] = [];
   const contains: Quartier[] = [];
   for (const qu of QUARTIERS) {
-    const n = qu.name.toLowerCase();
-    if (n.startsWith(s)) starts.push(qu);
+    const n = normalizeName(qu.name);
+    if (n === s) exact.push(qu);
+    else if (n.startsWith(s)) starts.push(qu);
     else if (n.includes(s)) contains.push(qu);
   }
-  return [...starts, ...contains].slice(0, limit);
+  return [...exact, ...starts, ...contains].slice(0, limit);
 }

@@ -9,36 +9,66 @@ import { normalizeTags } from "@/lib/vibe";
 const lastDraftAt = new Map<string, number>();
 const RATE_WINDOW_MS = 30_000;
 
+/**
+ * The system prompt. Key design decision: when the input doesn't explicitly
+ * mention a value, return null and add the field name to `inferred`. The UI
+ * surfaces "✦ AI guessed" next to those fields so the user knows what to
+ * double-check. We'd rather have a half-filled form than a silently wrong one.
+ */
 const SYSTEM_PROMPT = `You translate one user sentence describing something they
 want to do in Paris into a structured event card. Return STRICT JSON only.
 
+You must produce these fields. Use null where the input is genuinely silent
+on the matter — DO NOT make up specifics. List every field whose value you
+inferred (rather than directly extracted from the input) in the "inferred"
+array; this is critical, the user needs to know what to double-check.
+
 Schema:
-- title (string, 4-60 chars): editorial, concrete, not a question. No echoing of
-  the location or time inside the title.
-- description (string, 0-160 chars): optional, only when input gives detail.
-- tags (array of 2-5 strings): lowercase, hyphenated, single-concept each
-  (e.g. "fashion-shoot", "modeling", "avant-garde", "le-marais"). Letters,
-  numbers, hyphens only. No leading "#".
-- locationQuery (string|null): a Paris neighborhood, street, or landmark
-  the user mentioned. Null if not present. Keep it short — what you'd type
-  into a map search.
+- title (string, 4-60 chars): editorial, concrete, not a question. Do NOT
+  echo the location or time inside the title.
+- description (string|null, 0-160 chars): only when the input gives detail
+  worth keeping. Otherwise null.
+- tags (array of 2-5 strings): lowercase, single-concept, hyphenated. Letters,
+  numbers, hyphens only. No leading "#". Tags ARE allowed to be inferred
+  from the activity vibe — always produce 2-5.
+- locationQuery (string|null): a Paris neighborhood, street, address, or
+  landmark the user mentioned. IMPORTANT:
+    • Keep the user's natural phrasing — use spaces, not hyphens.
+    • If the user named multiple places (a route like "Eiffel Tower to
+      Sacre Coeur"), return the FIRST/starting place.
+    • If the user only named a body of water ("the Seine"), a vague region
+      ("central Paris"), or no place at all, return null.
 - startsAtIso (string|null): ISO 8601 in Europe/Paris timezone. Interpret
   natural phrases like "tomorrow 7pm", "next saturday at 4pm" relative to
-  the current Paris time, which is provided. Null if absent or ambiguous.
-- spots (integer 2-12): infer from context. "Small group" 3, "open invite" 6.
-  Default 4 if unstated.
-- permission ("public"|"request"): default "public" unless the user implies
-  hand-picking or vetting attendees.
+  the current Paris time, which is provided in the user turn. Null if absent
+  or ambiguous ("sometime soon" → null).
+- endsAtIso (string|null): ISO 8601 in Europe/Paris timezone. Set ONLY when
+  the input gives explicit duration ("for 2 hours", "all afternoon", "until
+  midnight"). Compute as startsAtIso + duration. Null otherwise.
+- spots (integer 2-12 | null): how many people the creator wants. Set ONLY
+  when the input has a number ("looking for 2 more" → 3 total including
+  creator), an explicit phrase ("solo plus one" → 2), or strong context
+  ("open invite", "small group"). Null otherwise — do NOT default to 4.
+- permission ("public"|"request"|null): "request" only when the input
+  implies vetting ("DM me if interested", "send your portfolio", "approval
+  needed"). "public" when explicitly open. Null when unclear.
 - color (string|null): a 6-digit hex like "#a83a73", chosen to complement
-  the activity vibe (warm reds for performance, blues for talks, greens for
-  walks). Null if no clear vibe.
+  the activity vibe. Null if no clear vibe — color is decorative.
+- externalUrl (string|null): a URL in the input. Otherwise null.
+
+- inferred (array of strings): names of fields where you guessed rather than
+  extracted. Always include "tags" if you generated tags from vibe instead
+  of input. Always include "color" if you picked a hex. Include any other
+  field where you applied judgement rather than reading the input verbatim.
 
 Rules:
 - Never invent specifics the user didn't say.
-- If unclear, prefer null over a guess.
+- Prefer null over a guess for spots, permission, locationQuery, startsAtIso,
+  endsAtIso, externalUrl.
+- For tags + color it's ok to infer — but always list them in "inferred".
 - Output ONLY the JSON object — no preamble, no prose.`;
 
-function parsisNowIso(): string {
+function parisNowIso(): string {
   // We give the LLM the *Paris-local* wall time so its "tomorrow" math
   // anchors correctly without us having to teach it our timezone.
   return new Intl.DateTimeFormat("sv-SE", {
@@ -82,12 +112,12 @@ export async function POST(req: Request) {
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
-      temperature: 0.5,
+      temperature: 0.4,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Paris-local time is: ${parsisNowIso()}\n\nInput:\n"""${prompt}"""`,
+          content: `Paris-local time is: ${parisNowIso()}\n\nInput:\n"""${prompt}"""`,
         },
       ],
     });
@@ -108,30 +138,74 @@ export async function POST(req: Request) {
   }
 }
 
+const URL_RE = /^https?:\/\/[^\s]+$/i;
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
 function sanitize(d: Record<string, unknown>) {
   const title = typeof d.title === "string" ? d.title.trim().slice(0, 80) : "";
-  const description = typeof d.description === "string" ? d.description.trim().slice(0, 240) : "";
+  const description =
+    typeof d.description === "string" && d.description.trim().length > 0
+      ? d.description.trim().slice(0, 240)
+      : null;
   const tags = normalizeTags(d.tags, 5);
+
   const locationQuery =
     typeof d.locationQuery === "string" && d.locationQuery.trim().length > 0
       ? d.locationQuery.trim().slice(0, 100)
       : null;
 
-  let startsAtIso: string | null = null;
-  if (typeof d.startsAtIso === "string") {
-    const t = Date.parse(d.startsAtIso);
-    if (Number.isFinite(t)) startsAtIso = new Date(t).toISOString();
+  const startsAtIso = isoOrNull(d.startsAtIso);
+  const endsAtIso = isoOrNull(d.endsAtIso);
+
+  let spots: number | null = null;
+  if (typeof d.spots === "number" && Number.isFinite(d.spots)) {
+    spots = Math.max(2, Math.min(12, Math.round(d.spots)));
   }
 
-  const spotsRaw = typeof d.spots === "number" ? d.spots : 4;
-  const spots = Math.max(2, Math.min(12, Math.round(spotsRaw)));
+  let permission: "public" | "request" | null = null;
+  if (d.permission === "public" || d.permission === "request") permission = d.permission;
 
-  const permission = d.permission === "request" ? "request" : "public";
+  const color = typeof d.color === "string" && HEX_RE.test(d.color)
+    ? d.color.toLowerCase()
+    : null;
 
-  const color =
-    typeof d.color === "string" && /^#[0-9a-fA-F]{6}$/.test(d.color)
-      ? d.color.toLowerCase()
+  const externalUrl =
+    typeof d.externalUrl === "string" && URL_RE.test(d.externalUrl.trim())
+      ? d.externalUrl.trim().slice(0, 500)
       : null;
 
-  return { title, description, tags, locationQuery, startsAtIso, spots, permission, color };
+  // `inferred` is the list of field names that were AI-guessed (not directly
+  // extracted). Filter to only known fields, dedupe.
+  const KNOWN = new Set([
+    "title", "description", "tags", "locationQuery",
+    "startsAtIso", "endsAtIso", "spots", "permission", "color", "externalUrl",
+  ]);
+  const inferred = Array.isArray(d.inferred)
+    ? Array.from(new Set(
+        d.inferred
+          .filter((v): v is string => typeof v === "string")
+          .filter((v) => KNOWN.has(v)),
+      ))
+    : [];
+
+  return {
+    title,
+    description,
+    tags,
+    locationQuery,
+    startsAtIso,
+    endsAtIso,
+    spots,
+    permission,
+    color,
+    externalUrl,
+    inferred,
+  };
+}
+
+function isoOrNull(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = Date.parse(v);
+  if (!Number.isFinite(t)) return null;
+  return new Date(t).toISOString();
 }

@@ -61,6 +61,7 @@ function OnboardingInner() {
   const [whatsapp, setWhatsapp] = useState("");
   const [site, setSite] = useState("");
   const [interests, setInterests] = useState<string[]>([]);
+  const [bio, setBio] = useState<string>("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>("");
@@ -140,6 +141,7 @@ function OnboardingInner() {
               site: site.trim(),
             },
             interests,
+            bio: bio.trim() || null,
           }),
         });
       }
@@ -265,6 +267,24 @@ function OnboardingInner() {
           </p>
 
           <div className="mt-10 space-y-6">
+            <div>
+              <label className="mono text-[10px] tracking-widest opacity-70">BIO</label>
+              <p className="mono text-[10px] opacity-50 mt-1">
+                One or two lines — what you do, what you're into.
+              </p>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value.slice(0, 200))}
+                rows={2}
+                placeholder="e.g. Berlin-born art director, moonlighting as a filmmaker."
+                className="input mt-1 resize-none"
+                maxLength={200}
+              />
+              <div className="mono text-[10px] opacity-50 mt-1 text-right tabular-nums">
+                {bio.length}/200
+              </div>
+            </div>
+
             <div className="space-y-3">
               <label className="mono text-[10px] tracking-widest opacity-70">SOCIALS</label>
               <SocialField prefix="@" label="INSTAGRAM" value={instagram} onChange={setInstagram} />

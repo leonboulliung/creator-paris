@@ -20,6 +20,8 @@ export interface Profile {
   avatarUrl: string | null;
   socials: Socials | null;
   interests: string[] | null;
+  /** Short editorial bio (≤200 chars). Shown on profile + post detail. */
+  bio: string | null;
   createdAt: number;
   /** Last time the user changed their `displayName`. Drives the 7-day cooldown. */
   usernameChangedAt?: number | null;
@@ -54,6 +56,10 @@ export interface Card {
   createdAt: number;
   /** Repurposed column: when the event actually starts. */
   expiresAt: number;
+  /** Optional end time. `null` = open-ended ("until vibe ends"). */
+  endsAt: number | null;
+  /** Optional "more info" link (GitHub, Strava, Are.na, etc.). */
+  externalUrl: string | null;
   durationDays: number;
   archived: boolean;
   joiners: CardJoiner[];

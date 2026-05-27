@@ -12,6 +12,7 @@ type ProfileRow = {
   avatar_url: string | null;
   socials: Socials | null;
   interests: string[] | null;
+  bio: string | null;
   created_at: string;
 };
 
@@ -40,6 +41,8 @@ type CardRow = {
   color: string | null;
   created_at: string;
   expires_at: string;
+  ends_at: string | null;
+  external_url: string | null;
   duration_days: number;
   archived: boolean;
   owner: ProfileRow | null;
@@ -54,6 +57,7 @@ const blankProfile = (id: string): Profile => ({
   avatarUrl: null,
   socials: null,
   interests: null,
+  bio: null,
   createdAt: 0,
 });
 
@@ -66,6 +70,7 @@ function mapProfile(row: ProfileRow | null, fallbackId = ""): Profile {
     avatarUrl: row.avatar_url,
     socials: row.socials ?? null,
     interests: row.interests ?? null,
+    bio: row.bio ?? null,
     createdAt: row.created_at ? new Date(row.created_at).getTime() : 0,
   };
 }
@@ -101,6 +106,8 @@ function mapCard(row: CardRow): Card {
     color: row.color ?? null,
     createdAt: new Date(row.created_at).getTime(),
     expiresAt: new Date(row.expires_at).getTime(),
+    endsAt: row.ends_at ? new Date(row.ends_at).getTime() : null,
+    externalUrl: row.external_url ?? null,
     durationDays: row.duration_days,
     archived: row.archived,
     joiners: (row.joiners || []).map(mapJoiner),
@@ -110,13 +117,13 @@ function mapCard(row: CardRow): Card {
 
 const CARD_SELECT = `
   id, owner_id, title, description, location, spots, permission, tags, color,
-  created_at, expires_at, duration_days, archived,
-  owner:profiles!cards_owner_id_fkey(id, phone, display_name, avatar_url, socials, interests, created_at),
+  created_at, expires_at, ends_at, external_url, duration_days, archived,
+  owner:profiles!cards_owner_id_fkey(id, phone, display_name, avatar_url, socials, interests, bio, created_at),
   joiners:joiners(user_id, role, joined_at,
-    user:profiles!joiners_user_id_fkey(id, phone, display_name, avatar_url, socials, interests, created_at)
+    user:profiles!joiners_user_id_fkey(id, phone, display_name, avatar_url, socials, interests, bio, created_at)
   ),
   requests:join_requests(user_id, requested_at,
-    user:profiles!join_requests_user_id_fkey(id, phone, display_name, avatar_url, socials, interests, created_at)
+    user:profiles!join_requests_user_id_fkey(id, phone, display_name, avatar_url, socials, interests, bio, created_at)
   )
 `;
 
@@ -142,7 +149,7 @@ export async function fetchActiveCards(): Promise<Card[]> {
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, phone, display_name, avatar_url, socials, interests, created_at")
+    .select("id, phone, display_name, avatar_url, socials, interests, bio, created_at")
     .eq("id", userId)
     .maybeSingle();
   if (error) throw error;

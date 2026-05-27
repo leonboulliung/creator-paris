@@ -27,6 +27,7 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
   const [interests, setInterests] = useState<string[]>(
     profile.interests ?? [],
   );
+  const [bio, setBio] = useState<string>(profile.bio ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -76,6 +77,7 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
             site: site.trim(),
           },
           interests,
+          bio: bio.trim() || null,
         }),
       });
       const json = await res.json();
@@ -140,6 +142,24 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
                 {formatNext(nextChangeAt)}.
               </p>
             )}
+          </div>
+
+          <div>
+            <label className="mono text-[10px] tracking-widest opacity-70">BIO</label>
+            <p className="mono text-[10px] opacity-50 mt-1">
+              One or two lines about you — what you do, what you're into.
+            </p>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value.slice(0, 200))}
+              rows={2}
+              placeholder="e.g. Berlin-born art director, moonlighting as a filmmaker."
+              className="input mt-1 resize-none"
+              maxLength={200}
+            />
+            <div className="mono text-[10px] opacity-50 mt-1 text-right tabular-nums">
+              {bio.length}/200
+            </div>
           </div>
 
           <div className="space-y-3">

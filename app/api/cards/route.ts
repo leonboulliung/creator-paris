@@ -21,6 +21,8 @@ export async function POST(req: Request) {
     spots?: number;
     permission?: "public" | "request";
     startsAt?: string; // ISO 8601
+    endsAt?: string | null;
+    externalUrl?: string | null;
     tags?: string[];
     color?: string;
   };
@@ -62,6 +64,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "starts_at_too_far" }, { status: 400 });
   }
 
+  // Optional end time. Must be after start; cap 24h-window after start to
+  // keep "things" event-shaped rather than open calendars.
+  let endsMs: number | null = null;
+  if (body.endsAt) {
+    const t = Date.parse(body.endsAt);
+    if (Number.isFinite(t)) {
+      if (t <= startsMs) {
+        return NextResponse.json({ error: "ends_at_before_start" }, { status: 400 });
+      }
+      if (t > startsMs + 24 * 60 * 60 * 1000) {
+        return NextResponse.json({ error: "ends_at_too_far" }, { status: 400 });
+      }
+      endsMs = t;
+    }
+  }
+
+  // Optional external URL. We require http(s) so we can render it as a link
+  // safely. Other schemes (javascript:, mailto:, data:) are rejected.
+  let externalUrl: string | null = null;
+  if (typeof body.externalUrl === "string") {
+    const u = body.externalUrl.trim().slice(0, 500);
+    if (u && /^https?:\/\/[^\s]+$/i.test(u)) externalUrl = u;
+  }
+
   await ensureProfile(userId);
   const admin = supabaseAdmin();
 
@@ -91,6 +117,8 @@ export async function POST(req: Request) {
       // `duration_days` is vestigial; we send 1 to satisfy the legacy CHECK.
       duration_days: 1,
       expires_at: new Date(startsMs).toISOString(),
+      ends_at: endsMs ? new Date(endsMs).toISOString() : null,
+      external_url: externalUrl,
     })
     .select()
     .single();

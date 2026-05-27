@@ -267,6 +267,17 @@ export default function PostPage() {
             </div>
             <div className="opacity-50 mt-1 text-[10px]">
               {expiresIn(card.expiresAt).toUpperCase()}
+              {card.endsAt && (
+                <>
+                  {" · ENDS "}
+                  <span className="tabular-nums">
+                    {new Date(card.endsAt).toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </>
+              )}
             </div>
           </div>
           <div className="border border-ink p-3">
@@ -277,6 +288,17 @@ export default function PostPage() {
             </div>
           </div>
         </div>
+
+        {card.externalUrl && (
+          <a
+            href={card.externalUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-2 mono text-[11px] tracking-widest border border-ink px-3 py-2 hover:bg-ink hover:text-paper transition self-start"
+          >
+            ↗ {card.externalUrl.replace(/^https?:\/\//i, "").replace(/\/$/, "")}
+          </a>
+        )}
 
         <div className="border border-ink h-64">
           <ParisMap cards={[card]} highlightId={card.id} />

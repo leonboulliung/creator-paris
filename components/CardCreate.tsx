@@ -20,24 +20,41 @@ const TAG_SUGGESTIONS = [
 /**
  * Optional pre-filled draft fields. The AI step-1 produces these; passing
  * them in primes the composer so the user only edits, doesn't re-type.
+ *
+ * Anything `null` in a draft means "AI couldn't infer this — let the user
+ * fill it in". Anything in `inferred` was guessed by the AI rather than
+ * extracted verbatim, and gets a ✦ hint next to the label.
  */
 export interface CardDraft {
   title?: string;
-  description?: string;
+  description?: string | null;
   tags?: string[];
   location?: { lat: number; lng: number; label: string };
   /** Free-form query string (e.g. "Le Marais") to run through Photon if
    *  no `location` was resolved server-side. */
-  locationQuery?: string;
+  locationQuery?: string | null;
   startsAtIso?: string | null;
-  spots?: number;
-  permission?: Permission;
+  endsAtIso?: string | null;
+  spots?: number | null;
+  permission?: Permission | null;
   color?: string | null;
+  externalUrl?: string | null;
+  /** Field names that the AI inferred rather than extracted. */
+  inferred?: string[];
 }
 
 type DayMode = "today" | "tomorrow" | "custom";
 type SpotPreset = 2 | 3 | 4 | 5 | 6;
 const SPOT_CHIPS: SpotPreset[] = [2, 3, 4, 5, 6];
+
+type EndsMode = "1h" | "2h" | "3h" | "evening" | "open" | "custom" | null;
+const ENDS_CHIPS: { mode: EndsMode; label: string }[] = [
+  { mode: "1h", label: "1H" },
+  { mode: "2h", label: "2H" },
+  { mode: "3h", label: "3H" },
+  { mode: "evening", label: "EVENING" },
+  { mode: "open", label: "OPEN-ENDED" },
+];
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
 function isoDate(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -58,14 +75,40 @@ export function CardCreate({
   const [description, setDescription] = useState(initialDraft?.description || "");
   const [tags, setTags] = useState<string[]>(initialDraft?.tags || []);
   const [color, setColor] = useState<string | null>(initialDraft?.color ?? null);
+  const [externalUrl, setExternalUrl] = useState<string>(initialDraft?.externalUrl || "");
 
-  const [spots, setSpots] = useState<number>(initialDraft?.spots || 4);
+  // Spots is null until the user (or AI with confidence) picks a number.
+  // Submit is disabled while null — we never default to a silent value.
+  const [spots, setSpots] = useState<number | null>(initialDraft?.spots ?? null);
   const [spotsCustom, setSpotsCustom] = useState<boolean>(
     !!(initialDraft?.spots && ![2, 3, 4, 5, 6].includes(initialDraft.spots)),
   );
-  const [permission, setPermission] = useState<Permission>(
-    initialDraft?.permission || "public",
+  const [permission, setPermission] = useState<Permission | null>(
+    initialDraft?.permission ?? null,
   );
+
+  // Track which fields are AI-guessed (not user-confirmed). Touching a
+  // field removes it from the set — the ✦ label hint disappears the moment
+  // the user interacts. We start from `initialDraft.inferred`.
+  const [inferredSet, setInferredSet] = useState<Set<string>>(
+    () => new Set(initialDraft?.inferred || []),
+  );
+  function confirm(field: string) {
+    setInferredSet((s) => {
+      if (!s.has(field)) return s;
+      const next = new Set(s);
+      next.delete(field);
+      return next;
+    });
+  }
+  function inferredHint(field: string) {
+    if (!inferredSet.has(field)) return null;
+    return (
+      <span className="ml-2 mono text-[9px] tracking-widest opacity-50 select-none">
+        ✦ AI GUESSED
+      </span>
+    );
+  }
 
   // When? two-stage picker, possibly seeded from AI's startsAtIso.
   const [dayMode, setDayMode] = useState<DayMode | null>(null);
@@ -73,6 +116,11 @@ export function CardCreate({
   const [hour, setHour] = useState<number | null>(null);
   const [customHM, setCustomHM] = useState<string>("");              // HH:MM
   const [showCustomTime, setShowCustomTime] = useState(false);
+
+  // How long? Chip presets compute endsAt relative to startsAt; "open" =
+  // null (no end), "custom" lets the user pick a specific end time.
+  const [endsMode, setEndsMode] = useState<EndsMode>(null);
+  const [customEndHM, setCustomEndHM] = useState<string>("");        // HH:MM for "custom"
 
   // Hydrate when-picker from AI initialDraft.startsAtIso on mount.
   useEffect(() => {
@@ -95,6 +143,24 @@ export function CardCreate({
     if (mm === 0 && hh >= 6) setHour(hh);
     else setCustomHM(`${pad(hh)}:${pad(mm)}`);
     // run once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Hydrate ends-mode from AI initialDraft.endsAtIso on mount.
+  useEffect(() => {
+    if (!initialDraft?.endsAtIso || !initialDraft?.startsAtIso) return;
+    const start = Date.parse(initialDraft.startsAtIso);
+    const end = Date.parse(initialDraft.endsAtIso);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
+    const diffMin = Math.round((end - start) / 60_000);
+    if (diffMin === 60) setEndsMode("1h");
+    else if (diffMin === 120) setEndsMode("2h");
+    else if (diffMin === 180) setEndsMode("3h");
+    else {
+      setEndsMode("custom");
+      const d = new Date(end);
+      setCustomEndHM(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -169,6 +235,31 @@ export function CardCreate({
     return d;
   }, [dayMode, customDate, hour, customHM]);
 
+  // Computed end timestamp from startsAt + endsMode (+ customEndHM).
+  // `null` means "open-ended" (no end time).
+  const endsAt = useMemo<Date | null>(() => {
+    if (!startsAt || !endsMode || endsMode === "open") return null;
+    if (endsMode === "1h") return new Date(startsAt.getTime() + 60 * 60_000);
+    if (endsMode === "2h") return new Date(startsAt.getTime() + 120 * 60_000);
+    if (endsMode === "3h") return new Date(startsAt.getTime() + 180 * 60_000);
+    if (endsMode === "evening") {
+      const d = new Date(startsAt);
+      d.setHours(23, 0, 0, 0);
+      return d > startsAt ? d : null;
+    }
+    if (endsMode === "custom" && customEndHM) {
+      const [hh, mm] = customEndHM.split(":").map(Number);
+      if (Number.isFinite(hh) && Number.isFinite(mm)) {
+        const d = new Date(startsAt);
+        d.setHours(hh, mm, 0, 0);
+        // If the picked time is earlier than start, assume "next day"
+        if (d <= startsAt) d.setDate(d.getDate() + 1);
+        return d;
+      }
+    }
+    return null;
+  }, [startsAt, endsMode, customEndHM]);
+
   const hourChips = useMemo(() => {
     const base = [11, 13, 15, 17, 18, 19, 20, 21, 22];
     if (dayMode !== "today") return base;
@@ -218,12 +309,13 @@ export function CardCreate({
     setQuery(r.label);
     setLatlng({ lat: r.lat, lng: r.lng });
     setSuggestions([]);
+    confirm("locationQuery");
   }
 
   // ====== submit ======
 
   async function submit() {
-    if (!title.trim() || !latlng || !startsAt) return;
+    if (!title.trim() || !latlng || !startsAt || spots === null || permission === null) return;
     setSubmitting(true);
     setError("");
     try {
@@ -243,6 +335,8 @@ export function CardCreate({
           tags,
           color,
           startsAt: startsAt.toISOString(),
+          endsAt: endsAt ? endsAt.toISOString() : null,
+          externalUrl: externalUrl.trim() || null,
         }),
       });
       const json = await res.json();
@@ -260,7 +354,13 @@ export function CardCreate({
     }
   }
 
-  const canSubmit = !!title.trim() && !!latlng && !!startsAt && !submitting;
+  const canSubmit =
+    !!title.trim() &&
+    !!latlng &&
+    !!startsAt &&
+    spots !== null &&
+    permission !== null &&
+    !submitting;
   const chipBase = "px-3 py-2 border border-ink mono text-[10px] tracking-widest";
 
   // Top-bar carries optional "back to AI prompt" + CLOSE.
@@ -360,6 +460,7 @@ export function CardCreate({
               setLatlng(ll);
               setPicked(null);
               if (!query) setQuery("Custom pin");
+              confirm("locationQuery");
             }}
             gestureHandling={false}
           />
@@ -404,10 +505,10 @@ export function CardCreate({
           <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-5">
             {/* TITLE */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">TITLE</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">TITLE{inferredHint("title")}</label>
               <input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => { setTitle(e.target.value); confirm("title"); }}
                 placeholder="A film night about loneliness. Sunday, my place."
                 className="input mt-1"
                 maxLength={140}
@@ -416,10 +517,10 @@ export function CardCreate({
 
             {/* TAGS */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">TAGS</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">TAGS{inferredHint("tags")}</label>
               <TagInput
                 value={tags}
-                onChange={setTags}
+                onChange={(v) => { setTags(v); confirm("tags"); }}
                 max={5}
                 suggestions={TAG_SUGGESTIONS}
                 placeholder="e.g. fashion, shooting"
@@ -429,10 +530,10 @@ export function CardCreate({
 
             {/* DESCRIPTION */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">DESCRIPTION</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">DESCRIPTION{inferredHint("description")}</label>
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { setDescription(e.target.value); confirm("description"); }}
                 rows={3}
                 placeholder="A few sentences. Who is this for. What kind of energy."
                 className="input mt-1 resize-none"
@@ -442,7 +543,7 @@ export function CardCreate({
 
             {/* PEOPLE */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">PEOPLE</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">PEOPLE{inferredHint("spots")}</label>
               <div className="mt-1 flex flex-wrap gap-2">
                 {SPOT_CHIPS.map((n) => {
                   const active = !spotsCustom && spots === n;
@@ -450,7 +551,7 @@ export function CardCreate({
                     <button
                       key={n}
                       type="button"
-                      onClick={() => { setSpots(n); setSpotsCustom(false); }}
+                      onClick={() => { setSpots(n); setSpotsCustom(false); confirm("spots"); }}
                       className={`${chipBase} w-11 text-center ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
                     >
                       {n}
@@ -469,10 +570,11 @@ export function CardCreate({
                     type="number"
                     min={1}
                     max={99}
-                    value={spots}
-                    onChange={(e) =>
-                      setSpots(Math.max(1, Math.min(99, Number(e.target.value) || 1)))
-                    }
+                    value={spots ?? ""}
+                    onChange={(e) => {
+                      setSpots(Math.max(1, Math.min(99, Number(e.target.value) || 1)));
+                      confirm("spots");
+                    }}
                     className="input w-20 tabular-nums"
                     autoFocus
                   />
@@ -483,7 +585,7 @@ export function CardCreate({
             {/* WHEN */}
             <div>
               <label className="mono text-[10px] tracking-widest opacity-70">
-                WHEN DOES IT START?
+                WHEN DOES IT START?{inferredHint("startsAtIso")}
               </label>
               <div className="mt-1 flex flex-wrap gap-2">
                 {(["today", "tomorrow", "custom"] as DayMode[]).map((d) => {
@@ -502,6 +604,7 @@ export function CardCreate({
                         setHour(null);
                         setCustomHM("");
                         setShowCustomTime(false);
+                        confirm("startsAtIso");
                       }}
                       className={`${chipBase} ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
                     >
@@ -516,7 +619,7 @@ export function CardCreate({
                   type="date"
                   value={customDate}
                   min={todayValue}
-                  onChange={(e) => { setCustomDate(e.target.value); setHour(null); setCustomHM(""); }}
+                  onChange={(e) => { setCustomDate(e.target.value); setHour(null); setCustomHM(""); confirm("startsAtIso"); }}
                   className="input mt-2 max-w-[200px]"
                   autoFocus
                 />
@@ -537,7 +640,7 @@ export function CardCreate({
                         <button
                           key={h}
                           type="button"
-                          onClick={() => { setHour(h); setCustomHM(""); setShowCustomTime(false); }}
+                          onClick={() => { setHour(h); setCustomHM(""); setShowCustomTime(false); confirm("startsAtIso"); }}
                           className={`${chipBase} w-11 text-center tabular-nums ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
                         >
                           {String(h).padStart(2, "0")}H
@@ -557,7 +660,7 @@ export function CardCreate({
                         type="time"
                         autoFocus
                         value={customHM}
-                        onChange={(e) => { setCustomHM(e.target.value); setHour(null); }}
+                        onChange={(e) => { setCustomHM(e.target.value); setHour(null); confirm("startsAtIso"); }}
                         onBlur={() => { if (!customHM) setShowCustomTime(false); }}
                         className="input w-28 animate-fadeIn"
                         placeholder="HH:MM"
@@ -575,20 +678,75 @@ export function CardCreate({
               )}
             </div>
 
+            {/* DURATION — only relevant once a start time exists */}
+            {startsAt && (
+              <div>
+                <label className="mono text-[10px] tracking-widest opacity-70">
+                  HOW LONG?{inferredHint("endsAtIso")}
+                </label>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {ENDS_CHIPS.map(({ mode, label: l }) => {
+                    const active = endsMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          setEndsMode(mode);
+                          if (mode !== "custom") setCustomEndHM("");
+                          confirm("endsAtIso");
+                        }}
+                        className={`${chipBase} ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
+                      >
+                        {l}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => { setEndsMode("custom"); confirm("endsAtIso"); }}
+                    className={`${chipBase} ${endsMode === "custom" ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
+                  >
+                    + CUSTOM
+                  </button>
+                  {endsMode === "custom" && (
+                    <input
+                      type="time"
+                      autoFocus
+                      value={customEndHM}
+                      onChange={(e) => { setCustomEndHM(e.target.value); confirm("endsAtIso"); }}
+                      className="input w-28 animate-fadeIn"
+                      placeholder="HH:MM"
+                    />
+                  )}
+                </div>
+                {endsAt && endsMode !== "open" && (
+                  <p className="mono text-[10px] mt-2 opacity-70 tabular-nums">
+                    ENDS · {pad(endsAt.getHours())}:{pad(endsAt.getMinutes())}
+                  </p>
+                )}
+                {endsMode === "open" && (
+                  <p className="mono text-[10px] mt-2 opacity-60">
+                    OPEN-ENDED · NO FIXED END TIME
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* PERMISSION */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">JOIN PERMISSION</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">JOIN PERMISSION{inferredHint("permission")}</label>
               <div className="mt-1 flex">
                 <button
                   type="button"
-                  onClick={() => setPermission("public")}
+                  onClick={() => { setPermission("public"); confirm("permission"); }}
                   className={`flex-1 px-3 py-2 border border-ink mono text-[10px] tracking-widest ${permission === "public" ? "bg-ink text-paper" : "bg-paper"}`}
                 >
                   PUBLIC JOIN
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPermission("request")}
+                  onClick={() => { setPermission("request"); confirm("permission"); }}
                   className={`flex-1 px-3 py-2 border border-ink border-l-0 mono text-[10px] tracking-widest ${permission === "request" ? "bg-ink text-paper" : "bg-paper"}`}
                 >
                   REQUEST TO JOIN
@@ -605,7 +763,7 @@ export function CardCreate({
               <div className="relative">
                 <input
                   value={query}
-                  onChange={(e) => { setQuery(e.target.value); setPicked(null); }}
+                  onChange={(e) => { setQuery(e.target.value); setPicked(null); confirm("locationQuery"); }}
                   placeholder="Search a shop, street, quartier — or click the map"
                   className="input mt-1"
                 />
@@ -636,6 +794,23 @@ export function CardCreate({
               )}
               <p className="mono text-[10px] mt-1 opacity-50">
                 The pin lands wherever you click on the big map.
+              </p>
+            </div>
+
+            {/* EXTERNAL LINK — optional */}
+            <div>
+              <label className="mono text-[10px] tracking-widest opacity-70">
+                LINK <span className="opacity-50">(OPTIONAL)</span>{inferredHint("externalUrl")}
+              </label>
+              <input
+                value={externalUrl}
+                onChange={(e) => { setExternalUrl(e.target.value); confirm("externalUrl"); }}
+                placeholder="https://github.com/… or are.na/…"
+                className="input mt-1"
+                maxLength={500}
+              />
+              <p className="mono text-[10px] mt-1 opacity-50">
+                For repos, routes, Are.na boards, anything that exists already.
               </p>
             </div>
 
@@ -698,10 +873,10 @@ export function CardCreate({
           <div className="space-y-5">
             {/* TITLE */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">TITLE</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">TITLE{inferredHint("title")}</label>
               <input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => { setTitle(e.target.value); confirm("title"); }}
                 placeholder="A film night about loneliness. Sunday, my place."
                 className="input mt-1"
                 maxLength={140}
@@ -710,10 +885,10 @@ export function CardCreate({
 
             {/* TAGS */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">TAGS</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">TAGS{inferredHint("tags")}</label>
               <TagInput
                 value={tags}
-                onChange={setTags}
+                onChange={(v) => { setTags(v); confirm("tags"); }}
                 max={5}
                 suggestions={TAG_SUGGESTIONS}
                 placeholder="e.g. fashion, shooting"
@@ -723,10 +898,10 @@ export function CardCreate({
 
             {/* DESCRIPTION */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">DESCRIPTION</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">DESCRIPTION{inferredHint("description")}</label>
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { setDescription(e.target.value); confirm("description"); }}
                 rows={4}
                 placeholder="A few sentences. Who is this for. What kind of energy."
                 className="input mt-1 resize-none"
@@ -736,7 +911,7 @@ export function CardCreate({
 
             {/* PEOPLE */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">PEOPLE</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">PEOPLE{inferredHint("spots")}</label>
               <div className="mt-1 flex flex-wrap gap-2">
                 {SPOT_CHIPS.map((n) => {
                   const active = !spotsCustom && spots === n;
@@ -744,7 +919,7 @@ export function CardCreate({
                     <button
                       key={n}
                       type="button"
-                      onClick={() => { setSpots(n); setSpotsCustom(false); }}
+                      onClick={() => { setSpots(n); setSpotsCustom(false); confirm("spots"); }}
                       className={`${chipBase} w-12 text-center ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
                     >
                       {n}
@@ -763,10 +938,11 @@ export function CardCreate({
                     type="number"
                     min={1}
                     max={99}
-                    value={spots}
-                    onChange={(e) =>
-                      setSpots(Math.max(1, Math.min(99, Number(e.target.value) || 1)))
-                    }
+                    value={spots ?? ""}
+                    onChange={(e) => {
+                      setSpots(Math.max(1, Math.min(99, Number(e.target.value) || 1)));
+                      confirm("spots");
+                    }}
                     className="input w-20 tabular-nums"
                     autoFocus
                   />
@@ -777,7 +953,7 @@ export function CardCreate({
             {/* WHEN — two stage */}
             <div>
               <label className="mono text-[10px] tracking-widest opacity-70">
-                WHEN DOES IT START?
+                WHEN DOES IT START?{inferredHint("startsAtIso")}
               </label>
               <div className="mt-1 flex flex-wrap gap-2">
                 {(["today", "tomorrow", "custom"] as DayMode[]).map((d) => {
@@ -797,6 +973,7 @@ export function CardCreate({
                         setHour(null);
                         setCustomHM("");
                         setShowCustomTime(false);
+                        confirm("startsAtIso");
                       }}
                       className={`${chipBase} ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
                     >
@@ -811,7 +988,7 @@ export function CardCreate({
                   type="date"
                   value={customDate}
                   min={todayValue}
-                  onChange={(e) => { setCustomDate(e.target.value); setHour(null); setCustomHM(""); }}
+                  onChange={(e) => { setCustomDate(e.target.value); setHour(null); setCustomHM(""); confirm("startsAtIso"); }}
                   className="input mt-2 max-w-[200px]"
                   autoFocus
                 />
@@ -839,6 +1016,7 @@ export function CardCreate({
                             setHour(h);
                             setCustomHM("");
                             setShowCustomTime(false);
+                            confirm("startsAtIso");
                           }}
                           className={`${chipBase} w-12 text-center tabular-nums ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
                         >
@@ -859,7 +1037,7 @@ export function CardCreate({
                         type="time"
                         autoFocus
                         value={customHM}
-                        onChange={(e) => { setCustomHM(e.target.value); setHour(null); }}
+                        onChange={(e) => { setCustomHM(e.target.value); setHour(null); confirm("startsAtIso"); }}
                         onBlur={() => { if (!customHM) setShowCustomTime(false); }}
                         className="input w-28 animate-fadeIn"
                         placeholder="HH:MM"
@@ -877,20 +1055,75 @@ export function CardCreate({
               )}
             </div>
 
+            {/* DURATION — mobile */}
+            {startsAt && (
+              <div>
+                <label className="mono text-[10px] tracking-widest opacity-70">
+                  HOW LONG?{inferredHint("endsAtIso")}
+                </label>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {ENDS_CHIPS.map(({ mode, label: l }) => {
+                    const active = endsMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          setEndsMode(mode);
+                          if (mode !== "custom") setCustomEndHM("");
+                          confirm("endsAtIso");
+                        }}
+                        className={`${chipBase} ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
+                      >
+                        {l}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => { setEndsMode("custom"); confirm("endsAtIso"); }}
+                    className={`${chipBase} ${endsMode === "custom" ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
+                  >
+                    + CUSTOM
+                  </button>
+                  {endsMode === "custom" && (
+                    <input
+                      type="time"
+                      autoFocus
+                      value={customEndHM}
+                      onChange={(e) => { setCustomEndHM(e.target.value); confirm("endsAtIso"); }}
+                      className="input w-28 animate-fadeIn"
+                      placeholder="HH:MM"
+                    />
+                  )}
+                </div>
+                {endsAt && endsMode !== "open" && (
+                  <p className="mono text-[10px] mt-2 opacity-70 tabular-nums">
+                    ENDS · {pad(endsAt.getHours())}:{pad(endsAt.getMinutes())}
+                  </p>
+                )}
+                {endsMode === "open" && (
+                  <p className="mono text-[10px] mt-2 opacity-60">
+                    OPEN-ENDED · NO FIXED END TIME
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* JOIN PERMISSION */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">JOIN PERMISSION</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">JOIN PERMISSION{inferredHint("permission")}</label>
               <div className="mt-1 flex">
                 <button
                   type="button"
-                  onClick={() => setPermission("public")}
+                  onClick={() => { setPermission("public"); confirm("permission"); }}
                   className={`flex-1 px-3 py-2 border border-ink mono text-[10px] tracking-widest ${permission === "public" ? "bg-ink text-paper" : "bg-paper"}`}
                 >
                   PUBLIC JOIN
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPermission("request")}
+                  onClick={() => { setPermission("request"); confirm("permission"); }}
                   className={`flex-1 px-3 py-2 border border-ink border-l-0 mono text-[10px] tracking-widest ${permission === "request" ? "bg-ink text-paper" : "bg-paper"}`}
                 >
                   REQUEST TO JOIN
@@ -907,7 +1140,7 @@ export function CardCreate({
               <div className="relative">
                 <input
                   value={query}
-                  onChange={(e) => { setQuery(e.target.value); setPicked(null); }}
+                  onChange={(e) => { setQuery(e.target.value); setPicked(null); confirm("locationQuery"); }}
                   placeholder="Le Comptoir Général, 27 rue Volta, Belleville…"
                   className="input mt-1"
                 />
@@ -939,6 +1172,23 @@ export function CardCreate({
                 Real Paris addresses + venues — type a shop, bar, street, quartier.
               </p>
             </div>
+
+            {/* EXTERNAL LINK — optional */}
+            <div>
+              <label className="mono text-[10px] tracking-widest opacity-70">
+                LINK <span className="opacity-50">(OPTIONAL)</span>{inferredHint("externalUrl")}
+              </label>
+              <input
+                value={externalUrl}
+                onChange={(e) => { setExternalUrl(e.target.value); confirm("externalUrl"); }}
+                placeholder="https://github.com/… or are.na/…"
+                className="input mt-1"
+                maxLength={500}
+              />
+              <p className="mono text-[10px] mt-1 opacity-50">
+                For repos, routes, Are.na boards, anything that exists already.
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -953,6 +1203,7 @@ export function CardCreate({
                   setLatlng(ll);
                   setPicked(null);
                   if (!query) setQuery("Custom pin");
+                  confirm("locationQuery");
                 }}
               />
             </div>

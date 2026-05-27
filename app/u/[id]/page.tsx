@@ -135,6 +135,9 @@ export default function PublicProfilePage() {
               <h1 className="editorial font-black text-[34px] sm:text-[56px] leading-[1.05] mt-1 pb-1 truncate">
                 @{profile.displayName}
               </h1>
+              {profile.bio && (
+                <p className="mt-2 text-[14px] leading-[1.4] max-w-xl">{profile.bio}</p>
+              )}
               <div className="mono text-[11px] mt-2 opacity-70">
                 {counts.total} ENTR{counts.total === 1 ? "Y" : "IES"} · {counts.created} CREATED · {counts.joined} JOINED
               </div>
