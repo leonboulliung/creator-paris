@@ -1,6 +1,3 @@
-import type { Activity } from "./vibe";
-import { activityFromTitle } from "./vibe";
-
 /** Curated editorial palette — used in the composer chip grid and for fallbacks. */
 export const COLOR_PALETTE: { value: string; label: string }[] = [
   { value: "#c2452f", label: "TOMATO" },
@@ -17,39 +14,31 @@ export const COLOR_PALETTE: { value: string; label: string }[] = [
   { value: "#d8c89e", label: "CREAM" },
 ];
 
-const CATEGORY_FALLBACK: Record<Activity, string> = {
-  film: "#c2452f",
-  music: "#7b6ea8",
-  food: "#c89438",
-  art: "#a83a73",
-  walk: "#5a8a6e",
-  read: "#2e7387",
-  talk: "#c45a14",
-  build: "#3a3a3a",
-  sport: "#7c8a3c",
-  default: "#0a0a0a",
-};
+const DEFAULT_COLOR = "#0a0a0a";
 
 /**
  * Resolve the dominant color for a card. Explicit author choice wins; if
- * unset (legacy cards), derive from category or title-implied activity.
+ * unset we fall back to a stable hash-derived shade from the palette.
+ * Hash is deterministic per title so the same card always looks the same.
  */
-export function cardColor(card: {
-  color?: string | null;
-  category?: string | null;
-  title?: string;
-}): string {
+export function cardColor(card: { color?: string | null; title?: string }): string {
   if (card.color) return card.color;
-  return categoryColor(card);
+  return paletteFromString(card.title || "");
 }
 
-/** Category-derived color only (ignores explicit author color). */
-export function categoryColor(card: {
-  category?: string | null;
-  title?: string;
-}): string {
-  const cat = (card.category as Activity | null) || activityFromTitle(card.title || "");
-  return CATEGORY_FALLBACK[cat] || CATEGORY_FALLBACK.default;
+/**
+ * Stable color pick from the curated palette, hashed off any string.
+ * Used when the author didn't choose one explicitly.
+ */
+export function paletteFromString(seed: string): string {
+  if (!seed) return DEFAULT_COLOR;
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const idx = (h >>> 0) % COLOR_PALETTE.length;
+  return COLOR_PALETTE[idx].value;
 }
 
 /** Returns true if a color is dark enough that white text reads well on it. */

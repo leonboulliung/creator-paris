@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ACTIVITY_GLYPH, ACTIVITY_LABEL, CATEGORY_ORDER, type Activity } from "@/lib/vibe";
 import type { Profile } from "@/lib/types";
+import { TagInput } from "./TagInput";
+
+const INTEREST_SUGGESTIONS = [
+  "film", "music", "art", "fashion", "food", "walks",
+  "photography", "design", "books", "build", "sport", "talk",
+];
 
 const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{1,31}$/i;
 const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -19,8 +24,8 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
   const [telegram, setTelegram] = useState(profile.socials?.telegram || "");
   const [whatsapp, setWhatsapp] = useState(profile.socials?.whatsapp || "");
   const [site, setSite] = useState(profile.socials?.site || "");
-  const [interests, setInterests] = useState<Activity[]>(
-    (profile.interests as Activity[] | null) ?? [],
+  const [interests, setInterests] = useState<string[]>(
+    profile.interests ?? [],
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -33,12 +38,6 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
   const usernameChanged =
     username.trim().toLowerCase() !== profile.displayName.toLowerCase();
   const cooldownBlocking = cooldownActive && usernameChanged;
-
-  function toggleInterest(a: Activity) {
-    setInterests((arr) =>
-      arr.includes(a) ? arr.filter((x) => x !== a) : [...arr, a],
-    );
-  }
 
   function formatNext(ts: number) {
     return new Date(ts).toLocaleString("en-GB", {
@@ -153,26 +152,17 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
 
           <div>
             <label className="mono text-[10px] tracking-widest opacity-70">INTERESTS</label>
-            <p className="mono text-[10px] opacity-50 mt-1">Tap what you'd want company for.</p>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {CATEGORY_ORDER.map((c) => {
-                const active = interests.includes(c);
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => toggleInterest(c)}
-                    className={`aspect-[3/2] border border-ink flex flex-col items-center justify-center gap-1 transition ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
-                    aria-pressed={active}
-                  >
-                    <span className="text-[20px] leading-none">{ACTIVITY_GLYPH[c]}</span>
-                    <span className="mono text-[10px] tracking-widest">
-                      {ACTIVITY_LABEL[c]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <p className="mono text-[10px] opacity-50 mt-1">
+              Free-form tags — what would you want company for?
+            </p>
+            <TagInput
+              value={interests}
+              onChange={setInterests}
+              max={10}
+              suggestions={INTEREST_SUGGESTIONS}
+              placeholder="e.g. fashion, film, walks"
+              className="mt-2"
+            />
           </div>
 
           {error && <p className="mono text-[11px] text-red-700">{error}</p>}

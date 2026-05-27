@@ -254,23 +254,63 @@ export async function renderShareImage(card: Card, avatarDataUrl?: string): Prom
   });
 }
 
-export async function shareCard(card: Card, avatarDataUrl?: string): Promise<"shared" | "downloaded"> {
-  const blob = await renderShareImage(card, avatarDataUrl);
-  const filename = `creator-paris-${card.id}.png`;
-  const file = new File([blob], filename, { type: "image/png" });
-  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-  if (nav.canShare && nav.canShare({ files: [file] })) {
+/**
+ * Result of sharing a card:
+ *   - "shared":   the native share sheet handled it (mobile / web-share API)
+ *   - "copied":   copied the URL to clipboard (desktop / no share API)
+ *   - "downloaded": fallback, the PNG was saved (no share + no clipboard)
+ */
+export type ShareResult = "shared" | "copied" | "downloaded";
+
+function cardUrl(card: Card): string {
+  const origin =
+    typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : "https://creator-paris.vercel.app";
+  return `${origin}/post/${card.id}`;
+}
+
+function shareText(card: Card): string {
+  return `${card.title} — ${card.location.label}`;
+}
+
+/**
+ * Primary share action: pass the URL (and a short text) to the native
+ * share sheet on mobile, or copy the URL to the clipboard on desktop.
+ * No PNG generation involved — that's a separate explicit "Save poster"
+ * action via `downloadCardPoster()`.
+ */
+export async function shareCard(card: Card): Promise<ShareResult> {
+  const url = cardUrl(card);
+  const text = shareText(card);
+
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
     try {
-      await navigator.share({
-        files: [file],
-        title: card.title,
-        text: `${card.title} — ${card.location.label}`,
-      });
+      await navigator.share({ title: card.title, text, url });
       return "shared";
     } catch {
-      // fall through to download
+      // user cancelled or unavailable — fall through to clipboard
     }
   }
+
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(url);
+      return "copied";
+    } catch {
+      // fall through
+    }
+  }
+
+  // Last-resort fallback: download the PNG poster so the user has something.
+  await downloadCardPoster(card);
+  return "downloaded";
+}
+
+/** Explicit "save poster" action — generates and downloads the PNG. */
+export async function downloadCardPoster(card: Card, avatarDataUrl?: string): Promise<void> {
+  const blob = await renderShareImage(card, avatarDataUrl);
+  const filename = `creator-paris-${card.id}.png`;
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -279,7 +319,6 @@ export async function shareCard(card: Card, avatarDataUrl?: string): Promise<"sh
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
-  return "downloaded";
 }
 
 // ============================================================

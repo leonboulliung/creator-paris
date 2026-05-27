@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ACTIVITY_ACCENT, ACTIVITY_GLYPH, ACTIVITY_LABEL, CATEGORY_ORDER, type Activity } from "@/lib/vibe";
-import { COLOR_PALETTE, cardColor, categoryColor, isDark } from "@/lib/color";
+import { COLOR_PALETTE, cardColor, isDark } from "@/lib/color";
 import type { Permission } from "@/lib/types";
 import { startsLabel } from "@/lib/time";
 import { combinedSearch, type LocationResult } from "@/lib/location";
@@ -11,6 +10,30 @@ import { fetchActiveCards } from "@/lib/db";
 import { useIsDesktop } from "@/lib/hooks";
 import type { Card } from "@/lib/types";
 import { ParisMap } from "./ParisMap";
+import { TagInput } from "./TagInput";
+
+const TAG_SUGGESTIONS = [
+  "film", "music", "art", "fashion", "food", "walks",
+  "photography", "design", "shooting", "book", "build", "talk",
+];
+
+/**
+ * Optional pre-filled draft fields. The AI step-1 produces these; passing
+ * them in primes the composer so the user only edits, doesn't re-type.
+ */
+export interface CardDraft {
+  title?: string;
+  description?: string;
+  tags?: string[];
+  location?: { lat: number; lng: number; label: string };
+  /** Free-form query string (e.g. "Le Marais") to run through Photon if
+   *  no `location` was resolved server-side. */
+  locationQuery?: string;
+  startsAtIso?: string | null;
+  spots?: number;
+  permission?: Permission;
+  color?: string | null;
+}
 
 type DayMode = "today" | "tomorrow" | "custom";
 type SpotPreset = 2 | 3 | 4 | 5 | 6;
@@ -19,34 +42,97 @@ const SPOT_CHIPS: SpotPreset[] = [2, 3, 4, 5, 6];
 function pad(n: number) { return String(n).padStart(2, "0"); }
 function isoDate(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 
-export function CardCreate({ onClose }: { onClose: () => void }) {
+export function CardCreate({
+  onClose,
+  initialDraft,
+  onBack,
+}: {
+  onClose: () => void;
+  initialDraft?: CardDraft | null;
+  /** When set, shown as "← BACK" so the user can return to the AI prompt step. */
+  onBack?: () => void;
+}) {
   const router = useRouter();
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<Activity | null>(null);
-  const [color, setColor] = useState<string | null>(null);
+  const [title, setTitle] = useState(initialDraft?.title || "");
+  const [description, setDescription] = useState(initialDraft?.description || "");
+  const [tags, setTags] = useState<string[]>(initialDraft?.tags || []);
+  const [color, setColor] = useState<string | null>(initialDraft?.color ?? null);
 
-  const [spots, setSpots] = useState<number>(4);
-  const [spotsCustom, setSpotsCustom] = useState<boolean>(false);
-  const [permission, setPermission] = useState<Permission>("public");
+  const [spots, setSpots] = useState<number>(initialDraft?.spots || 4);
+  const [spotsCustom, setSpotsCustom] = useState<boolean>(
+    !!(initialDraft?.spots && ![2, 3, 4, 5, 6].includes(initialDraft.spots)),
+  );
+  const [permission, setPermission] = useState<Permission>(
+    initialDraft?.permission || "public",
+  );
 
-  // When? two-stage picker
+  // When? two-stage picker, possibly seeded from AI's startsAtIso.
   const [dayMode, setDayMode] = useState<DayMode | null>(null);
   const [customDate, setCustomDate] = useState<string>("");          // YYYY-MM-DD
   const [hour, setHour] = useState<number | null>(null);
   const [customHM, setCustomHM] = useState<string>("");              // HH:MM
   const [showCustomTime, setShowCustomTime] = useState(false);
 
+  // Hydrate when-picker from AI initialDraft.startsAtIso on mount.
+  useEffect(() => {
+    if (!initialDraft?.startsAtIso) return;
+    const d = new Date(initialDraft.startsAtIso);
+    if (Number.isNaN(d.getTime())) return;
+    const now = new Date();
+    const today = new Date(now); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const target = new Date(d); target.setHours(0, 0, 0, 0);
+
+    if (target.getTime() === today.getTime()) setDayMode("today");
+    else if (target.getTime() === tomorrow.getTime()) setDayMode("tomorrow");
+    else {
+      setDayMode("custom");
+      setCustomDate(isoDate(d));
+    }
+    const hh = d.getHours();
+    const mm = d.getMinutes();
+    if (mm === 0 && hh >= 6) setHour(hh);
+    else setCustomHM(`${pad(hh)}:${pad(mm)}`);
+    // run once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Color picker popover
   const [colorOpen, setColorOpen] = useState(false);
 
-  // Location autocomplete
-  const [query, setQuery] = useState("");
+  // Location autocomplete. Seed from AI-resolved location or query.
+  const [query, setQuery] = useState(
+    initialDraft?.location?.label || initialDraft?.locationQuery || "",
+  );
   const [picked, setPicked] = useState<LocationResult | null>(null);
-  const [latlng, setLatlng] = useState<{ lat: number; lng: number } | null>(null);
+  const [latlng, setLatlng] = useState<{ lat: number; lng: number } | null>(
+    initialDraft?.location
+      ? { lat: initialDraft.location.lat, lng: initialDraft.location.lng }
+      : null,
+  );
   const [suggestions, setSuggestions] = useState<LocationResult[]>([]);
   const [searching, setSearching] = useState(false);
+
+  // If AI gave us a locationQuery but no resolved lat/lng, kick off Photon
+  // immediately so the first suggestion can be auto-picked.
+  useEffect(() => {
+    if (!initialDraft?.locationQuery || initialDraft?.location) return;
+    let cancelled = false;
+    (async () => {
+      const ctrl = new AbortController();
+      const results = await combinedSearch(initialDraft.locationQuery!, ctrl.signal);
+      if (cancelled) return;
+      if (results[0]) {
+        const r = results[0];
+        setPicked(r);
+        setQuery(r.label);
+        setLatlng({ lat: r.lat, lng: r.lng });
+      }
+    })().catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>("");
@@ -102,8 +188,8 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
   const todayValue = useMemo(() => isoDate(new Date()), []);
 
   const previewColor = useMemo(
-    () => cardColor({ color, category, title }),
-    [color, category, title],
+    () => cardColor({ color, title }),
+    [color, title],
   );
   const previewDark = useMemo(() => isDark(previewColor), [previewColor]);
 
@@ -154,7 +240,7 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
           },
           spots,
           permission,
-          category,
+          tags,
           color,
           startsAt: startsAt.toISOString(),
         }),
@@ -177,12 +263,21 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
   const canSubmit = !!title.trim() && !!latlng && !!startsAt && !submitting;
   const chipBase = "px-3 py-2 border border-ink mono text-[10px] tracking-widest";
 
-  // Top-bar only carries CLOSE now — the colour picker lives inside the
-  // live preview banner (the actual colour surface).
+  // Top-bar carries optional "back to AI prompt" + CLOSE.
   const topBarRight = (
-    <button onClick={onClose} className="mono text-[11px] tracking-widest hover:underline">
-      CLOSE ✕
-    </button>
+    <div className="flex items-center gap-3">
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="mono text-[11px] tracking-widest hover:underline"
+        >
+          ← BACK
+        </button>
+      )}
+      <button onClick={onClose} className="mono text-[11px] tracking-widest hover:underline">
+        CLOSE ✕
+      </button>
+    </div>
   );
 
   // Reusable colour-picker pill that sits inside the preview banner.
@@ -244,13 +339,11 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
     </div>
   );
 
-  // Picked-pin colors mirror the live preview: explicit color (or fallback
-  // to the category color) for the inner disc, category color for the outer
-  // ring. Stays white/ink while neither category nor color is chosen.
-  const pickedInner =
-    color || (category ? categoryColor({ category }) : "#ffffff");
-  const pickedOuter =
-    category ? categoryColor({ category }) : color || "#0a0a0a";
+  // Picked-pin colors mirror the live preview. Inner = explicit color (or
+  // white while nothing is picked yet), outer = ink for a steady editorial
+  // ring against any background.
+  const pickedInner = color || "#ffffff";
+  const pickedOuter = "#0a0a0a";
 
   // Desktop side-panel: full Paris map on the left, configurator on the right.
   if (isDesktop) {
@@ -321,33 +414,17 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
               />
             </div>
 
-            {/* CATEGORY */}
+            {/* TAGS */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">CATEGORY</label>
-              <div className="mt-1 grid grid-cols-3 gap-2">
-                {CATEGORY_ORDER.map((c) => {
-                  const active = category === c;
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setCategory(c)}
-                      className={`group aspect-[3/2] border border-ink flex flex-col items-center justify-center gap-1 transition ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
-                      aria-pressed={active}
-                    >
-                      <span
-                        className={`text-[20px] leading-none ${active ? "text-paper" : "group-hover:text-paper"}`}
-                        style={!active ? { color: ACTIVITY_ACCENT[c] } : undefined}
-                      >
-                        {ACTIVITY_GLYPH[c]}
-                      </span>
-                      <span className="mono text-[9px] tracking-widest">
-                        {ACTIVITY_LABEL[c]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <label className="mono text-[10px] tracking-widest opacity-70">TAGS</label>
+              <TagInput
+                value={tags}
+                onChange={setTags}
+                max={5}
+                suggestions={TAG_SUGGESTIONS}
+                placeholder="e.g. fashion, shooting"
+                className="mt-1"
+              />
             </div>
 
             {/* DESCRIPTION */}
@@ -631,33 +708,17 @@ export function CardCreate({ onClose }: { onClose: () => void }) {
               />
             </div>
 
-            {/* CATEGORY */}
+            {/* TAGS */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">CATEGORY</label>
-              <div className="mt-1 grid grid-cols-3 gap-2">
-                {CATEGORY_ORDER.map((c) => {
-                  const active = category === c;
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setCategory(c)}
-                      className={`group aspect-[3/2] border border-ink flex flex-col items-center justify-center gap-1 transition ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
-                      aria-pressed={active}
-                    >
-                      <span
-                        className={`text-[22px] leading-none ${active ? "text-paper" : "group-hover:text-paper"}`}
-                        style={!active ? { color: ACTIVITY_ACCENT[c] } : undefined}
-                      >
-                        {ACTIVITY_GLYPH[c]}
-                      </span>
-                      <span className="mono text-[10px] tracking-widest">
-                        {ACTIVITY_LABEL[c]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <label className="mono text-[10px] tracking-widest opacity-70">TAGS</label>
+              <TagInput
+                value={tags}
+                onChange={setTags}
+                max={5}
+                suggestions={TAG_SUGGESTIONS}
+                placeholder="e.g. fashion, shooting"
+                className="mt-1"
+              />
             </div>
 
             {/* DESCRIPTION */}

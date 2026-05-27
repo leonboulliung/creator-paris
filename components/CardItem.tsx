@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import type { Card } from "@/lib/types";
 import { expiresIn, timeAgo } from "@/lib/time";
-import { ACTIVITY_LABEL, activityFromTitle, type Activity } from "@/lib/vibe";
 import { cardColor, isDark } from "@/lib/color";
 
 export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
@@ -17,9 +16,10 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
 
   const color = cardColor(card);
   const dark = isDark(color);
-  const activity = (card.category as Activity | null) || activityFromTitle(card.title);
   const { user } = useUser();
   const mine = user?.id === card.ownerId;
+  // First tag headlines the swatch (e.g. FASHION-SHOOT). Falls back to ONE THING.
+  const headlineTag = card.tags?.[0]?.toUpperCase() || "ONE THING";
 
   return (
     <Link
@@ -33,9 +33,9 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
           aria-hidden
         >
           <div
-            className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+            className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-1.5 py-0.5 max-w-[calc(100%-16px)] truncate ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
           >
-            {ACTIVITY_LABEL[activity]}
+            {headlineTag}
           </div>
         </div>
 
@@ -43,13 +43,26 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
           <div className="mono text-[10px] tracking-widest flex items-center gap-2 opacity-70">
             <span className="tabular-nums">#{String(index + 1).padStart(3, "0")}</span>
             <span>·</span>
-            <span>{card.location.label.toUpperCase()}</span>
-            <span className="ml-auto">{timeAgo(card.createdAt)}</span>
+            <span className="truncate">{card.location.label.toUpperCase()}</span>
+            <span className="ml-auto shrink-0">{timeAgo(card.createdAt)}</span>
           </div>
 
           <h2 className="editorial font-black text-[28px] sm:text-[40px] mt-2 leading-[0.92] group-hover:underline decoration-2 underline-offset-4">
             {card.title}
           </h2>
+
+          {card.tags && card.tags.length > 1 && (
+            <div className="mt-2 flex items-center gap-1 flex-wrap">
+              {card.tags.slice(1, 4).map((t) => (
+                <span
+                  key={t}
+                  className="mono text-[9px] tracking-widest px-1.5 py-0.5 border border-ink/40"
+                >
+                  #{t.toUpperCase()}
+                </span>
+              ))}
+            </div>
+          )}
 
           <div className="mt-3 mono text-[11px]">
             <div className="flex items-center gap-2 flex-wrap">

@@ -47,8 +47,8 @@ export interface Card {
   location: CardLocation;
   spots: number;
   permission: Permission;
-  /** Author-picked category. Falls back to title-derived activity when null. */
-  category: string | null;
+  /** Free-form tags (lowercase, hyphenated). AI suggests, user can edit. */
+  tags: string[];
   /** Author-picked color. Drives the dominant visual (strip, pin, hero). */
   color: string | null;
   createdAt: number;

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ensureProfile } from "@/lib/server/profile";
 import { newId } from "@/lib/id";
+import { normalizeTags } from "@/lib/vibe";
 
 // Hard ceiling: a card may live at most 30 days into the future. Most things
 // will be hours or days away — this just prevents pathological inputs.
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
     spots?: number;
     permission?: "public" | "request";
     startsAt?: string; // ISO 8601
-    category?: string;
+    tags?: string[];
     color?: string;
   };
   try {
@@ -29,15 +30,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const ALLOWED_CATS = new Set([
-    "film", "music", "build", "sport", "food", "art", "walk", "read", "talk",
-  ]);
-
   const title = (body.title || "").trim();
   const description = (body.description || "").trim();
   const spots = Math.max(1, Math.min(99, Math.floor(body.spots || 1)));
   const permission = body.permission === "request" ? "request" : "public";
-  const category = body.category && ALLOWED_CATS.has(body.category) ? body.category : null;
+  const tags = normalizeTags(body.tags, 5);
   // Accept any CSS-style hex/rgb. Validate loosely to keep schemas honest.
   const colorRaw = (body.color || "").trim();
   const color = /^#([0-9a-fA-F]{3}){1,2}$/.test(colorRaw) ? colorRaw.toLowerCase() : null;
@@ -87,7 +84,7 @@ export async function POST(req: Request) {
       location,
       spots,
       permission,
-      category,
+      tags,
       color,
       // `expires_at` column is repurposed: it now stores the event START time.
       // Cards auto-archive once this passes — which matches the new rule.

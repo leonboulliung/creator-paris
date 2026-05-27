@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type * as L from "leaflet";
 import type { TrackEntry } from "@/lib/types";
 import { PARIS_BOUNDS } from "@/lib/quartiers";
-import { cardColor, categoryColor } from "@/lib/color";
+import { cardColor } from "@/lib/color";
 
 interface Props {
   entries: TrackEntry[];
@@ -167,7 +167,9 @@ export function Constellation({ entries, className = "", aspect = "4 / 3" }: Pro
 
     ordered.forEach((e, i) => {
       const inner = cardColor(e.card);
-      const outer = categoryColor(e.card);
+      // Outer ring used to come from the category; we now use ink for a
+      // clean, editorial look that reads against any tile palette.
+      const outer = "#0a0a0a";
       const html = `
         <div style="position:relative; pointer-events:none;">
           <div style="

@@ -4,7 +4,12 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { ACTIVITY_GLYPH, ACTIVITY_LABEL, CATEGORY_ORDER, type Activity } from "@/lib/vibe";
+import { TagInput } from "@/components/TagInput";
+
+const INTEREST_SUGGESTIONS = [
+  "film", "music", "art", "fashion", "food", "walks",
+  "photography", "design", "books", "build", "sport", "talk",
+];
 
 const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{1,31}$/i;
 
@@ -55,7 +60,7 @@ function OnboardingInner() {
   const [telegram, setTelegram] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [site, setSite] = useState("");
-  const [interests, setInterests] = useState<Activity[]>([]);
+  const [interests, setInterests] = useState<string[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>("");
@@ -117,12 +122,6 @@ function OnboardingInner() {
     } finally {
       setSubmitting(false);
     }
-  }
-
-  function toggleInterest(a: Activity) {
-    setInterests((arr) =>
-      arr.includes(a) ? arr.filter((x) => x !== a) : [...arr, a],
-    );
   }
 
   async function submitStep2(skip = false) {
@@ -277,29 +276,16 @@ function OnboardingInner() {
             <div>
               <label className="mono text-[10px] tracking-widest opacity-70">INTERESTS</label>
               <p className="mono text-[10px] opacity-50 mt-1">
-                Tap what you'd want company for.
+                Free-form tags — what would you want company for?
               </p>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {CATEGORY_ORDER.map((c) => {
-                  const active = interests.includes(c);
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => toggleInterest(c)}
-                      className={`aspect-[3/2] border border-ink flex flex-col items-center justify-center gap-1 transition ${active ? "bg-ink text-paper" : "bg-paper hover:bg-ink hover:text-paper"}`}
-                      aria-pressed={active}
-                    >
-                      <span className="text-[20px] leading-none">
-                        {ACTIVITY_GLYPH[c]}
-                      </span>
-                      <span className="mono text-[10px] tracking-widest">
-                        {ACTIVITY_LABEL[c]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <TagInput
+                value={interests}
+                onChange={setInterests}
+                max={10}
+                suggestions={INTEREST_SUGGESTIONS}
+                placeholder="e.g. fashion, film, walks"
+                className="mt-2"
+              />
             </div>
 
             {error && <p className="mono text-[11px] text-red-700">{error}</p>}

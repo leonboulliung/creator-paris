@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { ensureProfile } from "@/lib/server/profile";
 import { supabaseAdmin } from "@/lib/supabase";
+import { normalizeTags } from "@/lib/vibe";
 
 const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{1,31}$/i;
 const URL_RE = /^https?:\/\//i;
@@ -84,14 +85,9 @@ export async function PATCH(req: Request) {
   }
 
   if (Array.isArray(body.interests)) {
-    const ALLOWED = new Set([
-      "film", "music", "build", "sport", "food", "art", "walk", "read", "talk",
-    ]);
-    const cleaned = body.interests
-      .filter((v): v is string => typeof v === "string")
-      .map((v) => v.toLowerCase())
-      .filter((v) => ALLOWED.has(v));
-    patch.interests = cleaned.length ? Array.from(new Set(cleaned)) : null;
+    // Free-form tags. Cap at 10 so profiles stay readable.
+    const cleaned = normalizeTags(body.interests, 10);
+    patch.interests = cleaned.length ? cleaned : null;
   }
 
   if (!Object.keys(patch).length) return NextResponse.json({ ok: true });

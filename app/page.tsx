@@ -6,7 +6,7 @@ import { SignedIn, SignedOut, SignUpButton } from "@clerk/nextjs";
 import { Header } from "@/components/Header";
 import { ParisMap } from "@/components/ParisMap";
 import { FeedPanel } from "@/components/FeedPanel";
-import { CardCreate } from "@/components/CardCreate";
+import { CardComposer } from "@/components/CardComposer";
 import { fetchActiveCards } from "@/lib/db";
 import { useRealtimeCards } from "@/lib/realtime";
 import type { Card } from "@/lib/types";
@@ -91,7 +91,7 @@ export default function HomePage() {
         <Header />
         <main className="no-scroll relative">
           {composing ? (
-            <CardCreate onClose={() => setComposing(false)} />
+            <CardComposer onClose={() => setComposing(false)} />
           ) : (
             <>
               <ParisMap

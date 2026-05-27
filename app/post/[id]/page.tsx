@@ -12,7 +12,6 @@ import { fetchCardById } from "@/lib/db";
 import { useRealtimeCards } from "@/lib/realtime";
 import type { Card } from "@/lib/types";
 import { expiresIn, timeAgo } from "@/lib/time";
-import { ACTIVITY_LABEL, activityFromTitle, type Activity } from "@/lib/vibe";
 import { shareCard } from "@/lib/share";
 
 export default function PostPage() {
@@ -22,6 +21,7 @@ export default function PostPage() {
   const [card, setCard] = useState<Card | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [shareHint, setShareHint] = useState<string>("");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<{
     title: string;
@@ -69,7 +69,7 @@ export default function PostPage() {
 
   const color = cardColor(card);
   const dark = isDark(color);
-  const activity = (card.category as Activity | null) || activityFromTitle(card.title);
+  const headlineTag = card.tags?.[0]?.toUpperCase() || "ONE THING";
   const mine = !!user && user.id === card.ownerId;
   const joined = !!user && card.joiners.some((j) => j.userId === user.id);
   const requested = !!user && card.requests.some((r) => r.userId === user.id);
@@ -78,8 +78,13 @@ export default function PostPage() {
   async function onShare() {
     if (!card) return;
     setSharing(true);
+    setShareHint("");
     try {
-      await shareCard(card, card.owner.avatarUrl || undefined);
+      const result = await shareCard(card);
+      if (result === "copied") setShareHint("LINK COPIED ✓");
+      else if (result === "shared") setShareHint("SHARED ✓");
+      else if (result === "downloaded") setShareHint("POSTER SAVED ✓");
+      window.setTimeout(() => setShareHint(""), 2500);
     } finally {
       setSharing(false);
     }
@@ -184,7 +189,7 @@ export default function PostPage() {
             <span
               className={`mono text-[10px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
             >
-              {ACTIVITY_LABEL[activity]}
+              {headlineTag}
             </span>
             <span className="mono text-[10px] tracking-widest opacity-90">
               {card.location.label.toUpperCase()}
@@ -226,6 +231,19 @@ export default function PostPage() {
             )}
           </div>
         </div>
+
+        {card.tags && card.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {card.tags.map((t) => (
+              <span
+                key={t}
+                className="mono text-[10px] tracking-widest border border-ink px-2 py-1"
+              >
+                #{t.toUpperCase()}
+              </span>
+            ))}
+          </div>
+        )}
 
         {card.description && (
           <p className="text-[18px] leading-[1.5] whitespace-pre-wrap max-w-2xl">
@@ -299,9 +317,16 @@ export default function PostPage() {
               </button>
             </SignUpButton>
           )}
-          <button onClick={onShare} className="btn ghost ml-auto" disabled={sharing}>
-            {sharing ? "RENDERING…" : "↗ SHARE AS IMAGE"}
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            {shareHint && (
+              <span className="mono text-[10px] tracking-widest opacity-70 animate-fadeIn">
+                {shareHint}
+              </span>
+            )}
+            <button onClick={onShare} className="btn ghost" disabled={sharing}>
+              {sharing ? "SHARING…" : "↗ SHARE"}
+            </button>
+          </div>
         </div>
 
         {/* owner pending requests */}

@@ -9,8 +9,7 @@ import { useRealtimeCards } from "@/lib/realtime";
 import type { Profile, TrackEntry } from "@/lib/types";
 import { expiresIn, timeAgo } from "@/lib/time";
 import { downloadCarnetPoster, exportCarnetPrintable, shareCard } from "@/lib/share";
-import { ACTIVITY_LABEL, activityFromTitle, type Activity } from "@/lib/vibe";
-import { cardColor, categoryColor, isDark } from "@/lib/color";
+import { cardColor, isDark } from "@/lib/color";
 import { Constellation } from "@/components/Constellation";
 import { ProfileEditor } from "@/components/ProfileEditor";
 
@@ -258,7 +257,7 @@ export default function CarnetPage() {
                               title: c.title,
                               createdAt: c.createdAt,
                               color: cardColor(c),
-                              outerColor: categoryColor(c),
+                              outerColor: "#0a0a0a",
                             })),
                             displayName,
                           );
@@ -370,7 +369,7 @@ function TrackLine({
   const d = new Date(at);
   const dateStr = `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
   const inner = cardColor(card);
-  const outer = categoryColor(card);
+  const outer = "#0a0a0a";
 
   return (
     <li className="border-b border-rule last:border-b-0">
@@ -407,7 +406,7 @@ function TrackLine({
             onClick={async () => {
               setBusy(true);
               try {
-                await shareCard(card, avatarUrl);
+                await shareCard(card);
               } finally {
                 setBusy(false);
               }
@@ -435,7 +434,7 @@ function TrackRow({
   const { card, role, at, isCreator } = entry;
   const color = cardColor(card);
   const dark = isDark(color);
-  const activity = (card.category as Activity | null) || activityFromTitle(card.title);
+  const headlineTag = card.tags?.[0]?.toUpperCase() || "ONE THING";
   const [busy, setBusy] = useState(false);
   const now = Date.now();
   const status = card.archived || card.expiresAt <= now ? "ARCHIVED" : "ACTIVE";
@@ -463,9 +462,9 @@ function TrackRow({
           aria-label="Open card"
         >
           <div
-            className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+            className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-1.5 py-0.5 max-w-[calc(100%-16px)] truncate ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
           >
-            {ACTIVITY_LABEL[activity]}
+            {headlineTag}
           </div>
           {status === "ACTIVE" ? (
             <div
@@ -553,7 +552,7 @@ function TrackRow({
         onClick={async () => {
           setBusy(true);
           try {
-            await shareCard(card, avatarUrl);
+            await shareCard(card);
           } finally {
             setBusy(false);
           }

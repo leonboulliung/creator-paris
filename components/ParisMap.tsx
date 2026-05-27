@@ -8,7 +8,7 @@ import { PARIS_BOUNDS, PARIS_CENTER } from "@/lib/quartiers";
 import type { Card } from "@/lib/types";
 import { parisTimeOfDay } from "@/lib/time";
 import { TOD_LABEL, type TimeOfDay } from "@/lib/vibe";
-import { cardColor, categoryColor } from "@/lib/color";
+import { cardColor } from "@/lib/color";
 
 // Module-scope flag — the plugin only needs registering once per page.
 let gestureHandlerRegistered = false;
