@@ -103,7 +103,7 @@ export default function PublicProfilePage() {
     return (
       <div className="app-shell">
         <Header />
-        <main>
+        <main className="animate-fadeIn">
           <div className="grid place-items-center min-h-full px-6 text-center py-20">
             <div>
               <div className="editorial font-black text-[40px]">No profile here.</div>
@@ -121,7 +121,7 @@ export default function PublicProfilePage() {
   return (
     <div className="app-shell">
       <Header />
-      <main className="flex flex-col">
+      <main className="flex flex-col animate-fadeIn">
         <div className="border-b border-ink px-4 sm:px-8 py-6 shrink-0">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 sm:w-20 sm:h-20 border border-ink overflow-hidden bg-white">
@@ -285,7 +285,7 @@ function PublicTrackRow({ entry }: { entry: TrackEntry }) {
       <div className="flex-1 flex items-stretch min-w-0">
         <Link
           href={`/post/${card.id}`}
-          className="w-16 sm:w-28 shrink-0 relative block"
+          className="w-[124px] sm:w-[140px] shrink-0 relative block"
           style={{ backgroundColor: color }}
         >
           <div className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-1.5 py-0.5 max-w-[calc(100%-16px)] truncate ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}>

@@ -7,7 +7,14 @@ import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { parisNow, parisTimeOfDay, formatParisClock } from "@/lib/time";
 import { TOD_LABEL } from "@/lib/vibe";
 
-export function Header() {
+export function Header({
+  onLogoClick,
+}: {
+  /** Optional intercept on the logo click. The Link still navigates to "/" —
+   *  this lets the page reset any in-page UI state (e.g. close the composer)
+   *  even when the user is already on "/". */
+  onLogoClick?: () => void;
+} = {}) {
   const [clock, setClock] = useState("");
 
   useEffect(() => {
@@ -36,7 +43,11 @@ export function Header() {
     <header className="shrink-0 z-50 bg-paper border-b border-ink safe-top">
       {/* Row 1 — logo · clock · auth */}
       <div className="flex items-center px-3 sm:px-6 py-2 sm:py-3 gap-2 sm:gap-4">
-        <Link href="/" className="flex items-center gap-3 shrink-0 min-w-0">
+        <Link
+          href="/"
+          onClick={() => onLogoClick?.()}
+          className="flex items-center gap-3 shrink-0 min-w-0"
+        >
           <span
             className="cp-pulse-dot"
             style={{ "--pin-color": "#3a5a96" } as React.CSSProperties}

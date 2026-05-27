@@ -121,7 +121,7 @@ export default function CarnetPage() {
     return (
       <div className="app-shell">
         <Header />
-        <main>
+        <main className="animate-fadeIn">
           <div className="grid place-items-center min-h-full px-6 text-center py-20">
             <div>
               <div className="editorial font-black text-[40px]">No carnet yet.</div>
@@ -142,7 +142,7 @@ export default function CarnetPage() {
   return (
     <div className="app-shell">
       <Header />
-      <main className="flex flex-col">
+      <main className="flex flex-col animate-fadeIn">
 
       <div className="border-b border-ink px-4 sm:px-8 py-6 shrink-0">
         <div className="flex items-center gap-4">
@@ -461,7 +461,7 @@ function TrackRow({
       <div className="flex-1 flex items-stretch min-w-0">
         <Link
           href={`/post/${card.id}`}
-          className="w-16 sm:w-28 shrink-0 relative block"
+          className="w-[124px] sm:w-[140px] shrink-0 relative block"
           style={{ backgroundColor: color }}
           aria-label="Open card"
         >

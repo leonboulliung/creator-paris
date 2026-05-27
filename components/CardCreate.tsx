@@ -361,6 +361,17 @@ export function CardCreate({
     spots !== null &&
     permission !== null &&
     !submitting;
+
+  // Build a human-readable list of what's still missing for the POST button.
+  // Empty when the form is ready. Used to render a gentle hint under the
+  // disabled POST so the user knows exactly what's left.
+  const missing = [
+    !title.trim() && "TITLE",
+    !startsAt && "WHEN",
+    !latlng && "LOCATION",
+    spots === null && "PEOPLE",
+    permission === null && "JOIN PERMISSION",
+  ].filter(Boolean) as string[];
   const chipBase = "px-3 py-2 border border-ink mono text-[10px] tracking-widest";
 
   // Top-bar carries optional "back to AI prompt" + CLOSE.
@@ -517,7 +528,7 @@ export function CardCreate({
 
             {/* TAGS */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">TAGS{inferredHint("tags")}</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">TAGS <span className="opacity-50">(OPTIONAL)</span>{inferredHint("tags")}</label>
               <TagInput
                 value={tags}
                 onChange={(v) => { setTags(v); confirm("tags"); }}
@@ -530,7 +541,7 @@ export function CardCreate({
 
             {/* DESCRIPTION */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">DESCRIPTION{inferredHint("description")}</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">DESCRIPTION <span className="opacity-50">(OPTIONAL)</span>{inferredHint("description")}</label>
               <textarea
                 value={description}
                 onChange={(e) => { setDescription(e.target.value); confirm("description"); }}
@@ -682,7 +693,7 @@ export function CardCreate({
             {startsAt && (
               <div>
                 <label className="mono text-[10px] tracking-widest opacity-70">
-                  HOW LONG?{inferredHint("endsAtIso")}
+                  HOW LONG? <span className="opacity-50">(OPTIONAL)</span>{inferredHint("endsAtIso")}
                 </label>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {ENDS_CHIPS.map(({ mode, label: l }) => {
@@ -821,17 +832,24 @@ export function CardCreate({
 
           {/* action bar */}
           <div
-            className="border-t border-ink px-4 py-3 flex items-center justify-end gap-2 shrink-0"
+            className="border-t border-ink px-4 py-3 shrink-0"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
           >
-            <button onClick={onClose} className="btn ghost" disabled={submitting}>Cancel</button>
-            <button
-              onClick={submit}
-              disabled={!canSubmit}
-              className={`btn ${!canSubmit ? "opacity-40" : ""}`}
-            >
-              {submitting ? "Posting…" : "Post →"}
-            </button>
+            {missing.length > 0 && (
+              <p className="mono text-[10px] opacity-60 mb-2">
+                STILL NEEDED · {missing.join(" · ")}
+              </p>
+            )}
+            <div className="flex items-center justify-end gap-2">
+              <button onClick={onClose} className="btn ghost" disabled={submitting}>Cancel</button>
+              <button
+                onClick={submit}
+                disabled={!canSubmit}
+                className={`btn ${!canSubmit ? "opacity-40" : ""}`}
+              >
+                {submitting ? "Posting…" : "Post →"}
+              </button>
+            </div>
           </div>
         </aside>
       </div>
@@ -885,7 +903,7 @@ export function CardCreate({
 
             {/* TAGS */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">TAGS{inferredHint("tags")}</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">TAGS <span className="opacity-50">(OPTIONAL)</span>{inferredHint("tags")}</label>
               <TagInput
                 value={tags}
                 onChange={(v) => { setTags(v); confirm("tags"); }}
@@ -898,7 +916,7 @@ export function CardCreate({
 
             {/* DESCRIPTION */}
             <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">DESCRIPTION{inferredHint("description")}</label>
+              <label className="mono text-[10px] tracking-widest opacity-70">DESCRIPTION <span className="opacity-50">(OPTIONAL)</span>{inferredHint("description")}</label>
               <textarea
                 value={description}
                 onChange={(e) => { setDescription(e.target.value); confirm("description"); }}
@@ -1059,7 +1077,7 @@ export function CardCreate({
             {startsAt && (
               <div>
                 <label className="mono text-[10px] tracking-widest opacity-70">
-                  HOW LONG?{inferredHint("endsAtIso")}
+                  HOW LONG? <span className="opacity-50">(OPTIONAL)</span>{inferredHint("endsAtIso")}
                 </label>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {ENDS_CHIPS.map(({ mode, label: l }) => {
@@ -1224,19 +1242,26 @@ export function CardCreate({
       </div>
 
       <div
-        className="border-t border-ink px-4 sm:px-6 py-3 flex items-center justify-end gap-2 shrink-0"
+        className="border-t border-ink px-4 sm:px-6 py-3 shrink-0"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
       >
-        <button onClick={onClose} className="btn ghost" disabled={submitting}>
-          Cancel
-        </button>
-        <button
-          onClick={submit}
-          disabled={!canSubmit}
-          className={`btn ${!canSubmit ? "opacity-40" : ""}`}
-        >
-          {submitting ? "Posting…" : "Post →"}
-        </button>
+        {missing.length > 0 && (
+          <p className="mono text-[10px] opacity-60 mb-2">
+            STILL NEEDED · {missing.join(" · ")}
+          </p>
+        )}
+        <div className="flex items-center justify-end gap-2">
+          <button onClick={onClose} className="btn ghost" disabled={submitting}>
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={!canSubmit}
+            className={`btn ${!canSubmit ? "opacity-40" : ""}`}
+          >
+            {submitting ? "Posting…" : "Post →"}
+          </button>
+        </div>
       </div>
       </div>
     </div>

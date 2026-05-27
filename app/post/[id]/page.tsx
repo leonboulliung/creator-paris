@@ -52,7 +52,7 @@ export default function PostPage() {
     return (
       <div className="app-shell">
         <Header />
-        <main>
+        <main className="animate-fadeIn">
           <div className="min-h-full grid place-items-center px-6 py-20">
             <div className="text-center">
               <div className="editorial font-black text-[40px]">Card not found.</div>
@@ -178,7 +178,7 @@ export default function PostPage() {
   return (
     <div className="app-shell">
       <Header />
-      <main>
+      <main className="animate-fadeIn">
 
       <div
         className="relative h-[42vh] sm:h-[52vh] border-b border-ink"

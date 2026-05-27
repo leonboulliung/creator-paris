@@ -89,8 +89,8 @@ export default function HomePage() {
   return (
     <>
       <div className="app-shell">
-        <Header />
-        <main className="no-scroll relative">
+        <Header onLogoClick={() => setComposing(false)} />
+        <main className="no-scroll relative animate-fadeIn">
           {composing ? (
             <CardComposer onClose={() => setComposing(false)} />
           ) : (

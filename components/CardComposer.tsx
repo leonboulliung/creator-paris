@@ -18,25 +18,29 @@ export function CardComposer({ onClose }: { onClose: () => void }) {
 
   if (stage === "prompt") {
     return (
-      <PromptStep
-        onDraft={(d) => {
-          setDraft(d);
-          setStage("compose");
-        }}
-        onSkip={() => {
-          setDraft(null);
-          setStage("compose");
-        }}
-        onClose={onClose}
-      />
+      <div className="h-full w-full animate-fadeIn">
+        <PromptStep
+          onDraft={(d) => {
+            setDraft(d);
+            setStage("compose");
+          }}
+          onSkip={() => {
+            setDraft(null);
+            setStage("compose");
+          }}
+          onClose={onClose}
+        />
+      </div>
     );
   }
 
   return (
-    <CardCreate
-      initialDraft={draft}
-      onClose={onClose}
-      onBack={() => setStage("prompt")}
-    />
+    <div key="compose" className="h-full w-full animate-fadeIn">
+      <CardCreate
+        initialDraft={draft}
+        onClose={onClose}
+        onBack={() => setStage("prompt")}
+      />
+    </div>
   );
 }

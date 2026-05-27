@@ -123,7 +123,15 @@ export function ParisMap({
         maxBounds: PARIS_BOUNDS as unknown as L.LatLngBoundsExpression,
         maxBoundsViscosity: 0.85,
         minZoom: 11,
-        maxZoom: 17,
+        maxZoom: 18,
+        // Continuous zoom (Google-Maps-style) instead of integer steps.
+        // zoomSnap=0 lets the map land at any zoom value; zoomDelta keeps
+        // the +/- buttons sensible; wheelPxPerZoomLevel = how many pixels
+        // of wheel input per zoom unit — smaller = more responsive.
+        zoomSnap: 0,
+        zoomDelta: 0.5,
+        wheelPxPerZoomLevel: 80,
+        zoomAnimation: true,
         ...(gestureHandling
           ? ({
               gestureHandling: true,
