@@ -46,6 +46,13 @@ body {
 .safe-top { padding-top: env(safe-area-inset-top); }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
+/* Shared leading column width for profile pages — the tab buttons
+   (TRACK RECORD / CARNET) and the row color block both bind to this so
+   they're guaranteed pixel-aligned regardless of font rendering. */
+:root { --lead-col-w: 140px; }
+@media (min-width: 640px) { :root { --lead-col-w: 156px; } }
+.cp-lead-col { width: var(--lead-col-w); }
+
 /* Two-finger / scroll-to-zoom overlay (leaflet-gesture-handling).
    Override default plugin styling to match the editorial look. */
 .leaflet-gesture-handling-touch-warning::after,

@@ -201,7 +201,7 @@ export default function CarnetPage() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-3 mono text-[11px] tracking-widest border-r border-ink ${tab === t ? "bg-ink text-paper" : "bg-paper text-ink"}`}
+            className={`cp-lead-col px-4 py-3 mono text-[11px] tracking-widest border-r border-ink text-left ${tab === t ? "bg-ink text-paper" : "bg-paper text-ink"}`}
           >
             {t === "track" ? "TRACK RECORD" : t.toUpperCase()}
           </button>
@@ -461,7 +461,7 @@ function TrackRow({
       <div className="flex-1 flex items-stretch min-w-0">
         <Link
           href={`/post/${card.id}`}
-          className="w-[124px] sm:w-[140px] shrink-0 relative block"
+          className="cp-lead-col shrink-0 relative block"
           style={{ backgroundColor: color }}
           aria-label="Open card"
         >

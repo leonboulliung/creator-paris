@@ -285,7 +285,7 @@ function PublicTrackRow({ entry }: { entry: TrackEntry }) {
       <div className="flex-1 flex items-stretch min-w-0">
         <Link
           href={`/post/${card.id}`}
-          className="w-[124px] sm:w-[140px] shrink-0 relative block"
+          className="cp-lead-col shrink-0 relative block"
           style={{ backgroundColor: color }}
         >
           <div className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-1.5 py-0.5 max-w-[calc(100%-16px)] truncate ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}>
