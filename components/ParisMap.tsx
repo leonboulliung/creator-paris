@@ -117,7 +117,9 @@ export function ParisMap({
         center: PARIS_CENTER,
         zoom: 12,
         zoomControl: true,
-        attributionControl: true,
+        // We add attribution manually below at bottomleft so it doesn't
+        // collide with the right-docked feed panel on home.
+        attributionControl: false,
         maxBounds: PARIS_BOUNDS as unknown as L.LatLngBoundsExpression,
         maxBoundsViscosity: 0.85,
         minZoom: 11,
@@ -141,7 +143,8 @@ export function ParisMap({
         .tileLayer(
           "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
           {
-            attribution: '© <a href="https://carto.com/attributions">CARTO</a> · OSM',
+            // Attribution is rendered by the manual control below, at bottomleft.
+            attribution: "",
             subdomains: "abcd",
             maxZoom: 19,
           },
@@ -158,6 +161,13 @@ export function ParisMap({
             pane: "overlayPane",
           },
         )
+        .addTo(map);
+
+      // Attribution lives at bottom-left so it never collides with the
+      // right-docked feed panel on home (or the FAB on mobile bottom-right).
+      leaflet.control
+        .attribution({ position: "bottomleft", prefix: false })
+        .addAttribution('© <a href="https://carto.com/attributions">CARTO</a> · OSM')
         .addTo(map);
 
       const group = leaflet.layerGroup().addTo(map);

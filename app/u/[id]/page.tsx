@@ -281,7 +281,7 @@ function PublicTrackRow({ entry }: { entry: TrackEntry }) {
   const restCrew = allCrew.length - visibleCrew.length;
 
   return (
-    <div className="border-b border-ink flex items-stretch">
+    <div className="border-b border-ink flex items-stretch pl-4 sm:pl-8">
       <div className="flex-1 flex items-stretch min-w-0">
         <Link
           href={`/post/${card.id}`}

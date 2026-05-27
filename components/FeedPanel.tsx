@@ -12,6 +12,8 @@ interface Props {
   onExpandedChange: (v: boolean) => void;
   cards: Card[];
   loaded: boolean;
+  /** Card IDs that arrived in the last ~10s — get a "NEW ✦" treatment. */
+  freshIds?: Set<string>;
 }
 
 /**
@@ -28,7 +30,7 @@ interface Props {
  * Both viewports keep the panel always visible — it is part of the map UI,
  * not an overlay you have to summon. Expand and collapse, never hide.
  */
-export function FeedPanel({ expanded, onExpandedChange, cards, loaded }: Props) {
+export function FeedPanel({ expanded, onExpandedChange, cards, loaded, freshIds }: Props) {
   const [clock, setClock] = useState("--:--");
   const isDesktop = useIsDesktop();
 
@@ -51,6 +53,11 @@ export function FeedPanel({ expanded, onExpandedChange, cards, loaded }: Props) 
   const expandedHeaderRow = (closeLabel: string) => (
     <div className="shrink-0 border-b border-ink px-3 sm:px-4 py-3 flex items-center gap-2 bg-paper">
       <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+        {/* Twinkling live-dot to signal a real-time stream */}
+        <span
+          className="shrink-0 inline-block w-1.5 h-1.5 rounded-full bg-[#c2452f] animate-twinkle"
+          aria-hidden
+        />
         <span className="mono text-[10px] tracking-widest tabular-nums shrink-0">
           {clock}
         </span>
@@ -88,7 +95,12 @@ export function FeedPanel({ expanded, onExpandedChange, cards, loaded }: Props) 
       ) : (
         <>
           {cards.map((c, i) => (
-            <CardItem key={c.id} card={c} index={i} />
+            <CardItem
+              key={c.id}
+              card={c}
+              index={i}
+              isFresh={freshIds?.has(c.id)}
+            />
           ))}
           {cards.length > 0 && (
             <div

@@ -77,13 +77,14 @@ export default function HomePage() {
   const fabHidden = composing || (!isDesktop && panelExpanded);
 
   // FAB sits "off the panel": shifts left by panel width on desktop, lifts
-  // above the peek strip on mobile so it always clears the docked list.
+  // above the peek strip on mobile (with a comfortable gap) so it never
+  // crowds the docked list.
   const fabShiftX = isDesktop
     ? panelExpanded
       ? PANEL_DESKTOP_EXPANDED
       : PANEL_DESKTOP_COLLAPSED
     : 0;
-  const fabBottomExtra = isDesktop ? 0 : PANEL_MOBILE_PEEK;
+  const fabBottomExtra = isDesktop ? 0 : PANEL_MOBILE_PEEK + 14;
 
   return (
     <>
@@ -106,6 +107,7 @@ export default function HomePage() {
                 onExpandedChange={setPanelExpanded}
                 cards={cards}
                 loaded={loaded}
+                freshIds={freshIds}
               />
             </>
           )}

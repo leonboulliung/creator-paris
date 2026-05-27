@@ -7,7 +7,16 @@ import type { Card } from "@/lib/types";
 import { expiresIn, timeAgo } from "@/lib/time";
 import { cardColor, isDark } from "@/lib/color";
 
-export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
+export function CardItem({
+  card,
+  index = 0,
+  isFresh = false,
+}: {
+  card: Card;
+  index?: number;
+  /** When true, the row gets a brief "NEW ✦" badge and a soft entrance. */
+  isFresh?: boolean;
+}) {
   const [, force] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => force((n) => n + 1), 15_000);
@@ -24,7 +33,7 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
   return (
     <Link
       href={`/post/${card.id}`}
-      className="block border-b border-ink group focus:outline-none"
+      className={`block border-b border-ink group focus:outline-none ${isFresh ? "cp-fresh-row animate-fadeIn" : ""}`}
     >
       <div className="flex items-stretch gap-0">
         <div
@@ -44,6 +53,11 @@ export function CardItem({ card, index = 0 }: { card: Card; index?: number }) {
             <span className="tabular-nums">#{String(index + 1).padStart(3, "0")}</span>
             <span>·</span>
             <span className="truncate">{card.location.label.toUpperCase()}</span>
+            {isFresh && (
+              <span className="shrink-0 mono text-[9px] tracking-widest px-1 py-0.5 bg-ink text-paper animate-twinkle">
+                NEW ✦
+              </span>
+            )}
             <span className="ml-auto shrink-0">{timeAgo(card.createdAt)}</span>
           </div>
 

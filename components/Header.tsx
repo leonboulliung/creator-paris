@@ -78,9 +78,18 @@ export function Header() {
           </SignedOut>
         </div>
 
-        {/* Mobile: avatar + sign-in only */}
+        {/* Mobile: PROFILE/PARIS switch + avatar + sign-in. Inline so we
+            never lose a header row for a single nav button. */}
         <div className="flex sm:hidden items-center gap-2 shrink-0">
           <SignedIn>
+            {showMobileSwitchRow && (
+              <Link
+                href={altDest}
+                className="mono text-[10px] tracking-widest px-2.5 py-1.5 border border-ink hover:bg-ink hover:text-paper"
+              >
+                {altLabel}
+              </Link>
+            )}
             <div className="[&_.cl-userButtonAvatarBox]:!w-8 [&_.cl-userButtonAvatarBox]:!h-8 [&_.cl-userButtonAvatarBox]:!rounded-none [&_.cl-userButtonAvatarBox]:!border [&_.cl-userButtonAvatarBox]:!border-ink">
               <UserButton afterSignOutUrl="/" />
             </div>
@@ -94,18 +103,6 @@ export function Header() {
           </SignedOut>
         </div>
       </div>
-
-      {/* Row 2 (mobile only) — full-width profile/paris switch for signed-in users. */}
-      {showMobileSwitchRow && (
-        <SignedIn>
-          <div className="flex sm:hidden border-t border-ink mono text-[11px] tracking-widest">
-            <Link href={altDest} className="flex-1 py-2.5 text-center">
-              {altLabel}
-            </Link>
-          </div>
-        </SignedIn>
-      )}
-
     </header>
   );
 }
