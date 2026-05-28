@@ -105,6 +105,21 @@ export default function CarnetPage() {
     return { created, joined, total: track.length, rolesPlayed, quartiers, monthsSpan };
   }, [track]);
 
+  // Username can change 1×/week. If we're still inside the cooldown, surface
+  // when the next change becomes possible (mirrors the rule in ProfileEditor).
+  const usernameNextChange = useMemo(() => {
+    const changed = profile?.usernameChangedAt;
+    if (!changed) return null;
+    const next = changed + 7 * 24 * 60 * 60 * 1000;
+    if (next <= Date.now()) return null;
+    return new Date(next)
+      .toLocaleString("en-GB", {
+        weekday: "short", day: "2-digit", month: "short",
+        hour: "2-digit", minute: "2-digit",
+      })
+      .toUpperCase();
+  }, [profile?.usernameChangedAt]);
+
   const monthGroups = useMemo(() => groupByMonth(track), [track]);
   const range = useMemo(() => {
     if (track.length === 0) return "";
@@ -171,6 +186,11 @@ export default function CarnetPage() {
             <div className="mono text-[11px] mt-2 opacity-70">
               {counts.total} ENTR{counts.total === 1 ? "Y" : "IES"} · {counts.created} CREATED · {counts.joined} JOINED
             </div>
+            {usernameNextChange && (
+              <div className="mono text-[10px] tracking-widest mt-1.5 opacity-50">
+                ↺ USERNAME CHANGEABLE AGAIN · {usernameNextChange}
+              </div>
+            )}
             {profile?.interests && profile.interests.length > 0 && (
               <div className="mono text-[10px] tracking-widest mt-2 opacity-70 flex flex-wrap gap-1">
                 {profile.interests.map((i) => (

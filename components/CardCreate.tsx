@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { COLOR_PALETTE, cardColor, isDark } from "@/lib/color";
 import type { Permission } from "@/lib/types";
-import { startsLabel } from "@/lib/time";
+import {
+  startsLabel, parisNow, parisParts, wallClockToParisMs,
+  parisWallTimeToMs, parisClockLabel,
+} from "@/lib/time";
 import { combinedSearch, type LocationResult } from "@/lib/location";
 import { fetchActiveCards } from "@/lib/db";
 import { useIsDesktop } from "@/lib/hooks";
@@ -83,8 +86,10 @@ export function CardCreate({
   const [spotsCustom, setSpotsCustom] = useState<boolean>(
     !!(initialDraft?.spots && ![2, 3, 4, 5, 6].includes(initialDraft.spots)),
   );
-  const [permission, setPermission] = useState<Permission | null>(
-    initialDraft?.permission ?? null,
+  // Permission defaults to "public" — the friendly, most-common choice.
+  // The AI can override to "request"; the user can flip it. No forced pick.
+  const [permission, setPermission] = useState<Permission>(
+    initialDraft?.permission ?? "public",
   );
 
   // Track which fields are AI-guessed (not user-confirmed). Touching a
@@ -122,26 +127,28 @@ export function CardCreate({
   const [endsMode, setEndsMode] = useState<EndsMode>(null);
   const [customEndHM, setCustomEndHM] = useState<string>("");        // HH:MM for "custom"
 
-  // Hydrate when-picker from AI initialDraft.startsAtIso on mount.
+  // Hydrate when-picker from AI initialDraft.startsAtIso on mount, reading
+  // the instant in *Paris* terms so the picker reflects what the card will
+  // actually mean (not the visitor's local wall-clock).
   useEffect(() => {
     if (!initialDraft?.startsAtIso) return;
-    const d = new Date(initialDraft.startsAtIso);
-    if (Number.isNaN(d.getTime())) return;
-    const now = new Date();
-    const today = new Date(now); today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-    const target = new Date(d); target.setHours(0, 0, 0, 0);
+    const ts = Date.parse(initialDraft.startsAtIso);
+    if (!Number.isFinite(ts)) return;
+    const p = parisParts(ts);
+    const todayP = parisParts(Date.now());
+    const tomorrowP = parisParts(Date.now() + 86_400_000);
 
-    if (target.getTime() === today.getTime()) setDayMode("today");
-    else if (target.getTime() === tomorrow.getTime()) setDayMode("tomorrow");
+    const sameDay = (a: typeof p, b: typeof p) =>
+      a.y === b.y && a.mo === b.mo && a.d === b.d;
+
+    if (sameDay(p, todayP)) setDayMode("today");
+    else if (sameDay(p, tomorrowP)) setDayMode("tomorrow");
     else {
       setDayMode("custom");
-      setCustomDate(isoDate(d));
+      setCustomDate(`${p.y}-${pad(p.mo + 1)}-${pad(p.d)}`);
     }
-    const hh = d.getHours();
-    const mm = d.getMinutes();
-    if (mm === 0 && hh >= 6) setHour(hh);
-    else setCustomHM(`${pad(hh)}:${pad(mm)}`);
+    if (p.mi === 0 && p.h >= 6) setHour(p.h);
+    else setCustomHM(`${pad(p.h)}:${pad(p.mi)}`);
     // run once
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -158,8 +165,8 @@ export function CardCreate({
     else if (diffMin === 180) setEndsMode("3h");
     else {
       setEndsMode("custom");
-      const d = new Date(end);
-      setCustomEndHM(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+      const ep = parisParts(end);
+      setCustomEndHM(`${pad(ep.h)}:${pad(ep.mi)}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -212,13 +219,18 @@ export function CardCreate({
 
   // ====== derived values ======
 
+  // The picker works in Paris wall-clock. We seed the day from parisNow()
+  // (whose local fields already mirror Paris), then reinterpret the chosen
+  // wall-clock as a real Paris instant via wallClockToParisMs. This keeps
+  // "tomorrow 15:00" meaning 15:00 in Paris for every visitor, not just
+  // those whose browser sits in CET.
   const startsAt = useMemo<Date | null>(() => {
     let d: Date | null = null;
-    if (dayMode === "today") d = new Date();
-    else if (dayMode === "tomorrow") { d = new Date(); d.setDate(d.getDate() + 1); }
+    if (dayMode === "today") d = parisNow();
+    else if (dayMode === "tomorrow") { d = parisNow(); d.setDate(d.getDate() + 1); }
     else if (dayMode === "custom" && customDate) {
       const [y, m, dd] = customDate.split("-").map(Number);
-      d = new Date();
+      d = parisNow();
       d.setFullYear(y, m - 1, dd);
     }
     if (!d) return null;
@@ -232,29 +244,31 @@ export function CardCreate({
       return null; // day set, time not yet
     }
 
-    return d;
+    // d now carries Paris wall-clock in its local fields → convert to the
+    // true instant for that Paris time.
+    return new Date(wallClockToParisMs(d));
   }, [dayMode, customDate, hour, customHM]);
 
   // Computed end timestamp from startsAt + endsMode (+ customEndHM).
   // `null` means "open-ended" (no end time).
   const endsAt = useMemo<Date | null>(() => {
     if (!startsAt || !endsMode || endsMode === "open") return null;
+    // Relative durations are pure instant math — timezone-safe.
     if (endsMode === "1h") return new Date(startsAt.getTime() + 60 * 60_000);
     if (endsMode === "2h") return new Date(startsAt.getTime() + 120 * 60_000);
     if (endsMode === "3h") return new Date(startsAt.getTime() + 180 * 60_000);
+    // Absolute end times anchor to the Paris calendar day of the start.
+    const p = parisParts(startsAt.getTime());
     if (endsMode === "evening") {
-      const d = new Date(startsAt);
-      d.setHours(23, 0, 0, 0);
-      return d > startsAt ? d : null;
+      const ms = parisWallTimeToMs(p.y, p.mo, p.d, 23, 0);
+      return ms > startsAt.getTime() ? new Date(ms) : null;
     }
     if (endsMode === "custom" && customEndHM) {
       const [hh, mm] = customEndHM.split(":").map(Number);
       if (Number.isFinite(hh) && Number.isFinite(mm)) {
-        const d = new Date(startsAt);
-        d.setHours(hh, mm, 0, 0);
-        // If the picked time is earlier than start, assume "next day"
-        if (d <= startsAt) d.setDate(d.getDate() + 1);
-        return d;
+        let ms = parisWallTimeToMs(p.y, p.mo, p.d, hh, mm);
+        if (ms <= startsAt.getTime()) ms += 24 * 60 * 60_000; // next day
+        return new Date(ms);
       }
     }
     return null;
@@ -263,8 +277,7 @@ export function CardCreate({
   const hourChips = useMemo(() => {
     const base = [11, 13, 15, 17, 18, 19, 20, 21, 22];
     if (dayMode !== "today") return base;
-    const now = new Date();
-    const min = now.getHours() + 1;
+    const min = parisNow().getHours() + 1;
     return base.filter((h) => h >= min);
   }, [dayMode]);
 
@@ -276,7 +289,7 @@ export function CardCreate({
       .toUpperCase();
   }, [customDate]);
 
-  const todayValue = useMemo(() => isoDate(new Date()), []);
+  const todayValue = useMemo(() => isoDate(parisNow()), []);
 
   const previewColor = useMemo(
     () => cardColor({ color, title }),
@@ -315,7 +328,7 @@ export function CardCreate({
   // ====== submit ======
 
   async function submit() {
-    if (!title.trim() || !latlng || !startsAt || spots === null || permission === null) return;
+    if (!title.trim() || !latlng || !startsAt || spots === null) return;
     setSubmitting(true);
     setError("");
     try {
@@ -345,7 +358,8 @@ export function CardCreate({
         return;
       }
       onClose();
-      router.push(`/post/${json.id}`);
+      // ?new=1 tells the detail page to show a "✓ THING POSTED" confirmation.
+      router.push(`/post/${json.id}?new=1`);
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -359,18 +373,17 @@ export function CardCreate({
     !!latlng &&
     !!startsAt &&
     spots !== null &&
-    permission !== null &&
     !submitting;
 
   // Build a human-readable list of what's still missing for the POST button.
   // Empty when the form is ready. Used to render a gentle hint under the
-  // disabled POST so the user knows exactly what's left.
+  // disabled POST so the user knows exactly what's left. Permission has a
+  // sensible default ("public") so it's never blocking.
   const missing = [
     !title.trim() && "TITLE",
     !startsAt && "WHEN",
     !latlng && "LOCATION",
     spots === null && "PEOPLE",
-    permission === null && "JOIN PERMISSION",
   ].filter(Boolean) as string[];
   const chipBase = "px-3 py-2 border border-ink mono text-[10px] tracking-widest";
 
@@ -733,7 +746,7 @@ export function CardCreate({
                 </div>
                 {endsAt && endsMode !== "open" && (
                   <p className="mono text-[10px] mt-2 opacity-70 tabular-nums">
-                    ENDS · {pad(endsAt.getHours())}:{pad(endsAt.getMinutes())}
+                    ENDS · {parisClockLabel(endsAt.getTime())}
                   </p>
                 )}
                 {endsMode === "open" && (
@@ -1117,7 +1130,7 @@ export function CardCreate({
                 </div>
                 {endsAt && endsMode !== "open" && (
                   <p className="mono text-[10px] mt-2 opacity-70 tabular-nums">
-                    ENDS · {pad(endsAt.getHours())}:{pad(endsAt.getMinutes())}
+                    ENDS · {parisClockLabel(endsAt.getTime())}
                   </p>
                 )}
                 {endsMode === "open" && (

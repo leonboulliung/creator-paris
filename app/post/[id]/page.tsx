@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SignUpButton, useUser } from "@clerk/nextjs";
 import { Header } from "@/components/Header";
@@ -11,15 +11,27 @@ import { cardColor, isDark } from "@/lib/color";
 import { fetchCardById } from "@/lib/db";
 import { useRealtimeCards } from "@/lib/realtime";
 import type { Card } from "@/lib/types";
-import { expiresIn, timeAgo } from "@/lib/time";
+import { expiresIn, timeAgo, fullStartLabel, parisClockLabel } from "@/lib/time";
 import { shareCard } from "@/lib/share";
 
 export default function PostPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params.id;
   const [card, setCard] = useState<Card | null>(null);
   const [loaded, setLoaded] = useState(false);
+  // Show a one-time "✓ THING POSTED" banner when arriving fresh from compose.
+  const [justPosted, setJustPosted] = useState(false);
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setJustPosted(true);
+      // Strip the param so a refresh / back doesn't re-show the banner.
+      window.history.replaceState(null, "", `/post/${id}`);
+      const t = window.setTimeout(() => setJustPosted(false), 5000);
+      return () => window.clearTimeout(t);
+    }
+  }, [searchParams, id]);
   const [sharing, setSharing] = useState(false);
   const [shareHint, setShareHint] = useState<string>("");
   const [editing, setEditing] = useState(false);
@@ -178,6 +190,19 @@ export default function PostPage() {
   return (
     <div className="app-shell">
       <Header />
+      {justPosted && (
+        <div className="shrink-0 bg-ink text-paper mono text-[11px] tracking-widest px-4 sm:px-8 py-2.5 flex items-center gap-2 animate-fadeIn">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-paper animate-twinkle" />
+          ✓ THING POSTED · IT'S LIVE ON THE MAP
+          <button
+            onClick={() => setJustPosted(false)}
+            className="ml-auto opacity-70 hover:opacity-100"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <main className="animate-fadeIn">
 
       <div
@@ -253,29 +278,16 @@ export default function PostPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mono text-[11px]">
           <div className="border border-ink p-3">
-            <div className="opacity-60">STARTS</div>
+            <div className="opacity-60">STARTS <span className="opacity-60">· PARIS</span></div>
             <div className="mt-1 text-[14px]">
-              {card.expiresAt
-                ? new Date(card.expiresAt).toLocaleString("en-GB", {
-                    weekday: "short",
-                    day: "2-digit",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "—"}
+              {card.expiresAt ? fullStartLabel(card.expiresAt) : "—"}
             </div>
             <div className="opacity-50 mt-1 text-[10px]">
               {expiresIn(card.expiresAt).toUpperCase()}
               {card.endsAt && (
                 <>
                   {" · ENDS "}
-                  <span className="tabular-nums">
-                    {new Date(card.endsAt).toLocaleTimeString("en-GB", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+                  <span className="tabular-nums">{parisClockLabel(card.endsAt)}</span>
                 </>
               )}
             </div>
