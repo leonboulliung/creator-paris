@@ -32,14 +32,14 @@ export default function GlobalError({
           The city stumbled.
         </h1>
         <p className="mono text-[12px] mt-6 opacity-80">
-          Something threw during render. The page can be retried; the underlying
-          issue is logged below.
+          Something threw during render. The page can be retried — if it keeps
+          happening, the reference below helps us track it down.
         </p>
-        <pre className="mono text-[11px] mt-6 p-4 border border-ink bg-white overflow-auto whitespace-pre-wrap break-all max-h-[40vh]">
-          {error.message}
-          {error.digest && `\n\nDigest: ${error.digest}`}
-          {error.stack && `\n\n${error.stack}`}
-        </pre>
+        {error.digest && (
+          <div className="mono text-[11px] mt-6 p-4 border border-ink bg-white">
+            REFERENCE · {error.digest}
+          </div>
+        )}
         <div className="flex gap-2 mt-6">
           <button onClick={reset} className="btn">Try again</button>
           <Link href="/" className="btn ghost">Back to /</Link>

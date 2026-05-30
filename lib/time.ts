@@ -170,62 +170,7 @@ export function parisTimeOfDay(now: Date = new Date()): TimeOfDay {
   return timeOfDayFromSun(now, PARIS_CENTER[0], PARIS_CENTER[1]);
 }
 
-export function parisHourOf(ts: number): number {
-  const h = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Paris",
-    hour: "2-digit",
-    hour12: false,
-  })
-    .formatToParts(new Date(ts))
-    .find((p) => p.type === "hour")?.value;
-  return h ? Number(h) % 24 : new Date(ts).getHours();
-}
-
 export function formatParisClock(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-/** Suggested "next sensible moment" chips, computed from local now. */
-export interface WhenChip {
-  label: string;
-  ts: number;
-}
-
-export function buildWhenChips(now: Date = new Date()): WhenChip[] {
-  const chips: WhenChip[] = [];
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-  const minLead = now.getTime() + 60 * 60 * 1000; // at least 1h from now
-
-  function chip(label: string, daysAhead: number, hour: number) {
-    const d = new Date(startOfToday);
-    d.setDate(d.getDate() + daysAhead);
-    d.setHours(hour, 0, 0, 0);
-    if (d.getTime() < minLead) return;
-    chips.push({ label, ts: d.getTime() });
-  }
-
-  // Tonight
-  chip("TONIGHT · 19H", 0, 19);
-  chip("TONIGHT · 21H", 0, 21);
-
-  // Tomorrow
-  chip("TOMORROW · 19H", 1, 19);
-  chip("TOMORROW · 21H", 1, 21);
-
-  // Next Saturday afternoon
-  const dow = now.getDay(); // 0=Sun ... 6=Sat
-  const daysToSat = (6 - dow + 7) % 7 || 7;
-  chip("THIS SAT · 14H", daysToSat, 14);
-  chip("THIS SAT · 20H", daysToSat, 20);
-
-  // Limit to a tidy 4
-  return chips.slice(0, 4);
-}
-
-/** Convert a Date to the value format expected by <input type="datetime-local">. */
-export function toLocalInputValue(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
