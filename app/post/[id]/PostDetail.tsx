@@ -1,0 +1,524 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { SignUpButton, useUser } from "@clerk/nextjs";
+import { Header } from "@/components/Header";
+import { ParisMap } from "@/components/ParisMap";
+import { cardColor, isDark } from "@/lib/color";
+import { fetchCardById } from "@/lib/db";
+import { useRealtimeCards } from "@/lib/realtime";
+import type { Card } from "@/lib/types";
+import { expiresIn, timeAgo, fullStartLabel, parisClockLabel } from "@/lib/time";
+import { shareCard } from "@/lib/share";
+
+export function PostDetail({ id }: { id: string }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [card, setCard] = useState<Card | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  // Show a one-time "✓ THING POSTED" banner when arriving fresh from compose.
+  const [justPosted, setJustPosted] = useState(false);
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setJustPosted(true);
+      // Strip the param so a refresh / back doesn't re-show the banner.
+      window.history.replaceState(null, "", `/post/${id}`);
+      const t = window.setTimeout(() => setJustPosted(false), 5000);
+      return () => window.clearTimeout(t);
+    }
+  }, [searchParams, id]);
+  const [sharing, setSharing] = useState(false);
+  const [shareHint, setShareHint] = useState<string>("");
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<{
+    title: string;
+    description: string;
+    spots: number;
+    permission: "public" | "request";
+  } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const { user } = useUser();
+
+  const refresh = useCallback(() => {
+    fetchCardById(id)
+      .then((c) => {
+        setCard(c);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [id]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+  useRealtimeCards(refresh);
+
+  if (!loaded) return <div className="h-[100dvh] bg-paper" />;
+  if (!card) {
+    return (
+      <div className="app-shell">
+        <Header />
+        <main className="animate-fadeIn">
+          <div className="min-h-full grid place-items-center px-6 py-20">
+            <div className="text-center">
+              <div className="editorial font-black text-[40px]">Card not found.</div>
+              <p className="mono text-[12px] mt-2 opacity-70">
+                It may have been removed or never existed.
+              </p>
+              <Link href="/" className="btn mt-6 inline-block">← Back to Paris</Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const color = cardColor(card);
+  const dark = isDark(color);
+  const headlineTag = card.tags?.[0]?.toUpperCase() || "ONE THING";
+  const mine = !!user && user.id === card.ownerId;
+  const joined = !!user && card.joiners.some((j) => j.userId === user.id);
+  const requested = !!user && card.requests.some((r) => r.userId === user.id);
+  const full = card.joiners.length >= card.spots;
+
+  async function onShare() {
+    if (!card) return;
+    setSharing(true);
+    setShareHint("");
+    try {
+      const result = await shareCard(card);
+      if (result === "copied") setShareHint("LINK COPIED ✓");
+      else if (result === "shared") setShareHint("SHARED ✓");
+      else if (result === "downloaded") setShareHint("POSTER SAVED ✓");
+      window.setTimeout(() => setShareHint(""), 2500);
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function doJoin() {
+    if (!card) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/cards/${card.id}/join`, { method: "POST" });
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function doLeave() {
+    if (!card) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/cards/${card.id}/join`, { method: "DELETE" });
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function doAccept(uid: string) {
+    if (!card) return;
+    await fetch(`/api/cards/${card.id}/requests/${uid}`, { method: "POST" });
+    refresh();
+  }
+
+  async function doDecline(uid: string) {
+    if (!card) return;
+    await fetch(`/api/cards/${card.id}/requests/${uid}`, { method: "DELETE" });
+    refresh();
+  }
+
+  async function doRemoveJoiner(uid: string) {
+    if (!card) return;
+    if (!confirm("Remove this joiner from the crew?")) return;
+    await fetch(`/api/cards/${card.id}/joiners/${uid}`, { method: "DELETE" });
+    refresh();
+  }
+
+  async function doSetRole(uid: string, role: string) {
+    if (!card) return;
+    await fetch(`/api/cards/${card.id}/joiners/${uid}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
+    refresh();
+  }
+
+  function startEdit() {
+    if (!card) return;
+    setDraft({
+      title: card.title,
+      description: card.description,
+      spots: card.spots,
+      permission: card.permission,
+    });
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    if (!card || !draft) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/cards/${card.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      setEditing(false);
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeCard() {
+    if (!card) return;
+    if (!confirm("Delete this card?")) return;
+    await fetch(`/api/cards/${card.id}`, { method: "DELETE" });
+    router.push("/");
+  }
+
+  return (
+    <div className="app-shell">
+      <Header />
+      {justPosted && (
+        <div className="shrink-0 bg-ink text-paper mono text-[11px] tracking-widest px-4 sm:px-8 py-2.5 flex items-center gap-2 animate-fadeIn">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-paper animate-twinkle" />
+          ✓ THING POSTED · IT'S LIVE ON THE MAP
+          <button
+            onClick={() => setJustPosted(false)}
+            className="ml-auto opacity-70 hover:opacity-100"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+      <main className="animate-fadeIn">
+
+      <div
+        className="relative h-[42vh] sm:h-[52vh] border-b border-ink"
+        style={{ backgroundColor: color }}
+      >
+        <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-8">
+          <div className={`flex items-center gap-2 ${dark ? "text-paper" : "text-ink"}`}>
+            <span
+              className={`mono text-[10px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+            >
+              {headlineTag}
+            </span>
+            <span className="mono text-[10px] tracking-widest opacity-90">
+              {card.location.label.toUpperCase()}
+            </span>
+          </div>
+          <h1
+            className={`editorial font-black text-[42px] sm:text-[88px] mt-3 max-w-[20ch] ${dark ? "text-paper" : "text-ink"}`}
+          >
+            {card.title}
+          </h1>
+        </div>
+      </div>
+
+      <div className="px-4 sm:px-8 py-6 max-w-4xl w-full mx-auto space-y-6">
+        <div className="flex items-center gap-3 mono text-[11px]">
+          {card.owner.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={card.owner.avatarUrl} alt="" className="w-10 h-10 border border-ink object-cover" />
+          ) : (
+            <div className="w-10 h-10 border border-ink bg-ink/10" aria-hidden />
+          )}
+          <div>
+            <Link href={`/u/${card.owner.id}`} className="hover:underline">@{card.owner.displayName}</Link>
+            <div className="opacity-60">{timeAgo(card.createdAt)} ago</div>
+          </div>
+          <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
+            <span className="tag">
+              {card.permission === "public" ? "PUBLIC JOIN" : "REQUEST"}
+            </span>
+            <span className="tabular-nums">
+              {card.joiners.length}/{card.spots} PEOPLE
+            </span>
+            {card.expiresAt && (
+              <span
+                className={`tag ${card.expiresAt <= Date.now() ? "bg-ink text-paper" : ""}`}
+              >
+                {expiresIn(card.expiresAt).toUpperCase()}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {card.tags && card.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {card.tags.map((t) => (
+              <span
+                key={t}
+                className="mono text-[10px] tracking-widest border border-ink px-2 py-1"
+              >
+                #{t.toUpperCase()}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {card.description && (
+          <p className="text-[18px] leading-[1.5] whitespace-pre-wrap max-w-2xl">
+            {card.description}
+          </p>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mono text-[11px]">
+          <div className="border border-ink p-3">
+            <div className="opacity-60">STARTS <span className="opacity-60">· PARIS</span></div>
+            <div className="mt-1 text-[14px]">
+              {card.expiresAt ? fullStartLabel(card.expiresAt) : "—"}
+            </div>
+            <div className="opacity-50 mt-1 text-[10px]">
+              {expiresIn(card.expiresAt).toUpperCase()}
+              {card.endsAt && (
+                <>
+                  {" · ENDS "}
+                  <span className="tabular-nums">{parisClockLabel(card.endsAt)}</span>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="border border-ink p-3">
+            <div className="opacity-60">WHERE</div>
+            <div className="mt-1 text-[14px]">{card.location.label}</div>
+            <div className="opacity-50 mt-1 text-[10px]">
+              {card.location.lat.toFixed(4)}, {card.location.lng.toFixed(4)}
+            </div>
+          </div>
+        </div>
+
+        {card.externalUrl && (
+          <a
+            href={card.externalUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-2 mono text-[11px] tracking-widest border border-ink px-3 py-2 hover:bg-ink hover:text-paper transition self-start"
+          >
+            ↗ {card.externalUrl.replace(/^https?:\/\//i, "").replace(/\/$/, "")}
+          </a>
+        )}
+
+        <div className="border border-ink h-64">
+          <ParisMap cards={[card]} highlightId={card.id} />
+        </div>
+
+        {/* actions */}
+        <div className="flex flex-wrap gap-2 pt-2">
+          {!mine && user && (
+            <>
+              {!joined && !requested && !full && (
+                <button onClick={doJoin} disabled={busy} className="btn">
+                  {card.permission === "public" ? "JOIN →" : "REQUEST TO JOIN →"}
+                </button>
+              )}
+              {(joined || requested) && (
+                <button onClick={doLeave} disabled={busy} className="btn ghost">
+                  {joined ? "LEAVE" : "CANCEL REQUEST"}
+                </button>
+              )}
+              {joined && <span className="tag">YOU'RE IN ✓</span>}
+              {requested && <span className="tag">REQUEST PENDING</span>}
+              {full && !joined && !requested && <span className="tag">FULL</span>}
+            </>
+          )}
+          {mine && (
+            <>
+              <button onClick={startEdit} className="btn ghost">EDIT</button>
+              <button onClick={removeCard} className="btn ghost">DELETE</button>
+            </>
+          )}
+          {!user && !mine && !full && (
+            <SignUpButton
+              mode="modal"
+              forceRedirectUrl={`/onboarding?next=/post/${card.id}`}
+            >
+              <button className="btn">
+                {card.permission === "public" ? "SIGN UP TO JOIN →" : "SIGN UP TO REQUEST →"}
+              </button>
+            </SignUpButton>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            {shareHint && (
+              <span className="mono text-[10px] tracking-widest opacity-70 animate-fadeIn">
+                {shareHint}
+              </span>
+            )}
+            <button onClick={onShare} className="btn ghost" disabled={sharing}>
+              {sharing ? "SHARING…" : "↗ SHARE"}
+            </button>
+          </div>
+        </div>
+
+        {/* owner pending requests */}
+        {mine && card.requests.length > 0 && (
+          <div className="border border-ink">
+            <div className="px-3 py-2 mono text-[10px] tracking-widest bg-ink text-paper">
+              PENDING REQUESTS · {card.requests.length}
+            </div>
+            <ul>
+              {card.requests.map((r) => (
+                <li
+                  key={r.userId}
+                  className="flex items-center justify-between px-3 py-2 border-t border-rule"
+                >
+                  <div className="mono text-[12px]">@{r.user.displayName}</div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => doAccept(r.userId)}
+                      className="mono text-[10px] tracking-widest px-3 py-1 border border-ink hover:bg-ink hover:text-paper"
+                    >
+                      ACCEPT
+                    </button>
+                    <button
+                      onClick={() => doDecline(r.userId)}
+                      className="mono text-[10px] tracking-widest px-3 py-1 border border-ink hover:bg-ink hover:text-paper"
+                    >
+                      DECLINE
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* crew — creator + joiners with roles */}
+        <div className="border border-ink">
+          <div className="px-3 py-2 mono text-[10px] tracking-widest bg-ink text-paper flex justify-between">
+            <span>CREW · {1 + card.joiners.length}</span>
+            {mine && card.joiners.length > 0 && (
+              <span className="opacity-70">TAP A ROLE TO NAME IT</span>
+            )}
+          </div>
+          <ul>
+            <li className="px-3 py-2 border-t border-rule flex items-center gap-3">
+              <span className="tag shrink-0">CREATOR</span>
+              <Link href={`/u/${card.owner.id}`} className="mono text-[12px] truncate hover:underline">@{card.owner.displayName}</Link>
+            </li>
+            {card.joiners.map((j) => (
+              <li key={j.userId} className="px-3 py-2 border-t border-rule flex items-center gap-3">
+                {mine ? (
+                  <input
+                    defaultValue={j.role}
+                    placeholder="ROLE — e.g. DJ, COOK, GUEST"
+                    maxLength={40}
+                    onBlur={(ev) => {
+                      const v = ev.currentTarget.value;
+                      if (v !== j.role) doSetRole(j.userId, v);
+                    }}
+                    onKeyDown={(ev) => {
+                      if (ev.key === "Enter") (ev.currentTarget as HTMLInputElement).blur();
+                    }}
+                    className="mono text-[10px] tracking-widest uppercase px-2 py-1 border border-ink bg-paper w-[180px] focus:outline-none focus:bg-ink focus:text-paper"
+                  />
+                ) : (
+                  <span className="tag shrink-0">{j.role.toUpperCase() || "JOINER"}</span>
+                )}
+                <Link href={`/u/${j.userId}`} className="mono text-[12px] truncate flex-1 hover:underline">@{j.user.displayName}</Link>
+                {mine && (
+                  <button
+                    onClick={() => doRemoveJoiner(j.userId)}
+                    className="mono text-[10px] tracking-widest opacity-50 hover:opacity-100"
+                    aria-label="Remove"
+                  >
+                    ✕
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div
+          className="pt-6"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)" }}
+        >
+          <Link href="/" className="mono text-[11px] tracking-widest hover:underline">
+            ← BACK TO PARIS
+          </Link>
+        </div>
+      </div>
+      </main>
+
+      {editing && draft && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[1200] flex sm:items-center sm:justify-center sm:bg-ink/60 sm:p-6">
+          <div className="bg-paper flex flex-col w-full h-full sm:max-w-[700px] sm:max-h-[90vh] sm:h-auto sm:border sm:border-ink sm:shadow-2xl">
+          <div className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top">
+            <div className="mono text-[10px] tracking-widest opacity-70">EDIT · ONE THING</div>
+            <button onClick={() => setEditing(false)} className="mono text-[11px] tracking-widest hover:underline">
+              CLOSE ✕
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 max-w-2xl w-full mx-auto space-y-4">
+            <div>
+              <label className="mono text-[10px] tracking-widest opacity-70">TITLE</label>
+              <input
+                value={draft.title}
+                onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                className="input mt-1"
+              />
+            </div>
+            <div>
+              <label className="mono text-[10px] tracking-widest opacity-70">DESCRIPTION</label>
+              <textarea
+                value={draft.description}
+                rows={4}
+                onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                className="input mt-1 resize-none"
+              />
+            </div>
+            <div>
+              <label className="mono text-[10px] tracking-widest opacity-70">PEOPLE</label>
+              <input
+                type="number"
+                min={1}
+                max={99}
+                value={draft.spots}
+                onChange={(e) => setDraft({ ...draft, spots: Number(e.target.value) })}
+                className="input mt-1 tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="mono text-[10px] tracking-widest opacity-70">PERMISSION</label>
+              <div className="mt-1 flex">
+                <button
+                  onClick={() => setDraft({ ...draft, permission: "public" })}
+                  className={`flex-1 px-3 py-2 border border-ink mono text-[10px] tracking-widest ${draft.permission === "public" ? "bg-ink text-paper" : "bg-paper"}`}
+                >
+                  PUBLIC JOIN
+                </button>
+                <button
+                  onClick={() => setDraft({ ...draft, permission: "request" })}
+                  className={`flex-1 px-3 py-2 border border-ink border-l-0 mono text-[10px] tracking-widest ${draft.permission === "request" ? "bg-ink text-paper" : "bg-paper"}`}
+                >
+                  REQUEST
+                </button>
+              </div>
+            </div>
+          </div>
+          <div
+            className="border-t border-ink px-4 sm:px-6 py-3 flex justify-end gap-2 shrink-0"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+          >
+            <button onClick={() => setEditing(false)} className="btn ghost" disabled={busy}>Cancel</button>
+            <button onClick={saveEdit} className="btn" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
+          </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}

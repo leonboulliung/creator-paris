@@ -24,9 +24,32 @@ const clerkAppearance = {
   },
 };
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://creator-paris.vercel.app";
+
 export const metadata: Metadata = {
-  title: "Creator.Paris — what's your one thing this week?",
-  description: "A living city layer. One card per person. Paris.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Creator.Paris — what's your one thing this week?",
+    template: "%s",
+  },
+  description:
+    "A living city layer for Paris. One card per person per week — a walk, a dinner, a shoot, a build. Drop a pin, find your crew.",
+  applicationName: "Creator.Paris",
+  keywords: ["Paris", "meetups", "creators", "events", "city", "community"],
+  openGraph: {
+    type: "website",
+    siteName: "Creator.Paris",
+    title: "Creator.Paris — what's your one thing this week?",
+    description:
+      "A living city layer for Paris. One card per person per week. Drop a pin, find your crew.",
+    url: "/",
+  },
+  twitter: {
+    card: "summary",
+    title: "Creator.Paris",
+    description: "A living city layer for Paris. One card per person per week.",
+  },
 };
 
 export const viewport: Viewport = {
