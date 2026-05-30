@@ -10,98 +10,8 @@ import { parisTimeOfDay } from "@/lib/time";
 import { TOD_LABEL, type TimeOfDay } from "@/lib/vibe";
 import { cardColor } from "@/lib/color";
 
-// Module-scope flags — handlers only need registering once per page.
+// Module-scope flag — the plugin only needs registering once per page.
 let gestureHandlerRegistered = false;
-let smoothWheelZoomRegistered = false;
-
-/**
- * Register a custom continuous wheel-zoom handler globally on L.Map. Each
- * map then opts in via `{ smoothWheelZoom: true }` in its options.
- *
- * Why custom: Leaflet's built-in wheel zoom debounces events and performs
- * one animated step per burst, which feels stiff at the desktop. This
- * handler tracks the wheel continuously via requestAnimationFrame and
- * zooms toward the cursor — the same pattern Google Maps uses.
- */
-function registerSmoothWheelZoom(leaflet: typeof L) {
-  if (smoothWheelZoomRegistered) return;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const LMap = leaflet.Map as any;
-  LMap.mergeOptions({ smoothWheelZoom: false, smoothSensitivity: 1 });
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const Handler = (leaflet.Handler as any).extend({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    addHooks(this: any) {
-      leaflet.DomEvent.on(this._map._container, "wheel", this._onWheelScroll, this);
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    removeHooks(this: any) {
-      leaflet.DomEvent.off(this._map._container, "wheel", this._onWheelScroll, this);
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    _onWheelScroll(this: any, e: WheelEvent) {
-      if (!this._isWheeling) this._onWheelStart(e);
-      this._onWheeling(e);
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    _onWheelStart(this: any, e: WheelEvent) {
-      const map = this._map;
-      this._isWheeling = true;
-      this._wheelMousePosition = map.mouseEventToContainerPoint(e);
-      this._centerPoint = map.getSize().divideBy(2);
-      this._wheelStartLatLng = map.containerPointToLatLng(this._wheelMousePosition);
-      map._stop();
-      this._goalZoom = map.getZoom();
-      this._prevCenter = map.getCenter();
-      this._prevZoom = map.getZoom();
-      this._zoomAnimationId = window.requestAnimationFrame(this._updateWheelZoom.bind(this));
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    _onWheeling(this: any, e: WheelEvent) {
-      const map = this._map;
-      const sensitivity = map.options.smoothSensitivity || 1;
-      this._goalZoom =
-        this._goalZoom + leaflet.DomEvent.getWheelDelta(e) * 0.003 * sensitivity;
-      if (this._goalZoom < map.getMinZoom() || this._goalZoom > map.getMaxZoom()) {
-        this._goalZoom = map._limitZoom(this._goalZoom);
-      }
-      this._wheelMousePosition = map.mouseEventToContainerPoint(e);
-      window.clearTimeout(this._timeoutId);
-      this._timeoutId = window.setTimeout(this._onWheelEnd.bind(this), 200);
-      leaflet.DomEvent.preventDefault(e);
-      leaflet.DomEvent.stopPropagation(e);
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    _onWheelEnd(this: any) {
-      this._isWheeling = false;
-      window.cancelAnimationFrame(this._zoomAnimationId);
-      this._map._moveEnd(true);
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    _updateWheelZoom(this: any) {
-      const map = this._map;
-      if (!map.getCenter().equals(this._prevCenter) || map.getZoom() !== this._prevZoom) {
-        return;
-      }
-      this._zoom = map.getZoom() + (this._goalZoom - map.getZoom()) * 0.3;
-      this._zoom = Math.floor(this._zoom * 100) / 100;
-      const delta = this._wheelMousePosition.subtract(this._centerPoint);
-      if (delta.x === 0 && delta.y === 0) return;
-      this._center = map.unproject(
-        map.project(this._wheelStartLatLng, this._zoom).subtract(delta),
-        this._zoom,
-      );
-      map.setView(this._center, this._zoom, { animate: false });
-      this._prevCenter = map.getCenter();
-      this._prevZoom = map.getZoom();
-      this._zoomAnimationId = window.requestAnimationFrame(this._updateWheelZoom.bind(this));
-    },
-  });
-
-  LMap.addInitHook("addHandler", "smoothWheelZoom", Handler);
-  smoothWheelZoomRegistered = true;
-}
 
 interface MapPin {
   id: string;
@@ -181,10 +91,6 @@ export function ParisMap({
       if (!mounted || !ref.current) return;
       LRef.current = leaflet;
 
-      // Smooth wheel-zoom (Google-Maps-style continuous zoom toward cursor).
-      // Registered once globally; each map opts in via smoothWheelZoom: true.
-      registerSmoothWheelZoom(leaflet);
-
       // Register the gestureHandling plugin once per page. addInitHook adds a
       // global handler that every subsequent leaflet.map(…) instance will
       // pick up if it passes { gestureHandling: true }.
@@ -217,12 +123,7 @@ export function ParisMap({
         maxBounds: PARIS_BOUNDS as unknown as L.LatLngBoundsExpression,
         maxBoundsViscosity: 0.85,
         minZoom: 11,
-        maxZoom: 18,
-        // Continuous fractional zoom — the smooth wheel handler sets fractional
-        // zoom directly via setView; the +/- buttons do full levels.
-        zoomSnap: 0,
-        zoomDelta: 1,
-        zoomAnimation: true,
+        maxZoom: 17,
         ...(gestureHandling
           ? ({
               gestureHandling: true,
@@ -235,14 +136,7 @@ export function ParisMap({
                 duration: 1200,
               },
             } as unknown as Record<string, unknown>)
-          : ({
-              // On the home (full-screen) map we replace Leaflet's stiff
-              // built-in wheel zoom with a continuous handler that tracks
-              // the cursor each frame via requestAnimationFrame.
-              scrollWheelZoom: false,
-              smoothWheelZoom: true,
-              smoothSensitivity: 1.2,
-            } as unknown as Record<string, unknown>)),
+          : {}),
       } as L.MapOptions);
       // Base tiles: Positron without labels (clean B&W substrate).
       leaflet
