@@ -188,6 +188,10 @@ export function CardCreate({
   );
   const [suggestions, setSuggestions] = useState<LocationResult[]>([]);
   const [searching, setSearching] = useState(false);
+  // Whether the suggestions dropdown is visible. Decoupled from `suggestions`
+  // so the user can dismiss it (Escape / blur / map-click / "use my text")
+  // without it snapping back open.
+  const [suggestOpen, setSuggestOpen] = useState(false);
 
   // If AI gave us a locationQuery but no resolved lat/lng, kick off Photon
   // immediately so the first suggestion can be auto-picked.
@@ -312,6 +316,7 @@ export function CardCreate({
       try {
         const results = await combinedSearch(query, ctrl.signal);
         setSuggestions(results);
+        if (results.length) setSuggestOpen(true);
       } finally {
         setSearching(false);
       }
@@ -324,7 +329,100 @@ export function CardCreate({
     setQuery(r.label);
     setLatlng({ lat: r.lat, lng: r.lng });
     setSuggestions([]);
+    setSuggestOpen(false);
     confirm("locationQuery");
+  }
+
+  // Keep exactly what the user typed as the label (escape hatch when no
+  // suggestion is specific enough) and let them drop the pin on the map.
+  function keepTypedLocation() {
+    setSuggestOpen(false);
+    confirm("locationQuery");
+  }
+
+  // A self-contained, dismissible location field — used in both the desktop
+  // sidebar and the mobile composer so behaviour stays identical.
+  function renderLocationField() {
+    const typed = query.trim();
+    return (
+      <div>
+        <label className="mono text-[10px] tracking-widest opacity-70">
+          LOCATION
+          {searching && <span className="ml-2 opacity-60">SEARCHING…</span>}
+        </label>
+        <div className="relative">
+          <input
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setPicked(null); setSuggestOpen(true); confirm("locationQuery"); }}
+            onFocus={() => { if (suggestions.length) setSuggestOpen(true); }}
+            onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setSuggestOpen(false); } }}
+            onBlur={() => window.setTimeout(() => setSuggestOpen(false), 140)}
+            placeholder="Search a place — or just click the map"
+            className="input mt-1"
+          />
+          {suggestOpen && suggestions.length > 0 && (
+            <div className="absolute left-0 right-0 top-full bg-paper border border-ink border-t-0 z-20 max-h-72 overflow-y-auto shadow-xl">
+              {/* dismiss bar */}
+              <div className="sticky top-0 flex items-center justify-between bg-paper border-b border-rule px-3 py-1.5">
+                <span className="mono text-[9px] tracking-widest opacity-50">
+                  {suggestions.length} NEARBY
+                </span>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setSuggestOpen(false)}
+                  className="mono text-[9px] tracking-widest opacity-60 hover:opacity-100"
+                  aria-label="Close suggestions"
+                >
+                  CLOSE ✕
+                </button>
+              </div>
+              {suggestions.map((s, i) => (
+                <button
+                  key={`${s.label}-${s.lat}-${s.lng}-${i}`}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pickLocation(s)}
+                  className="block w-full text-left px-3 py-2 hover:bg-ink hover:text-paper border-b border-rule"
+                >
+                  <div className="font-medium text-[13px] leading-tight truncate">{s.label}</div>
+                  <div className="mono text-[9px] tracking-widest opacity-60 mt-0.5 truncate">
+                    {s.source === "quartier" ? "◆ " : "● "}
+                    {s.hint || "PARIS"}
+                  </div>
+                </button>
+              ))}
+              {/* escape hatch: nothing fits → keep my text, pin on the map */}
+              {typed.length > 1 && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={keepTypedLocation}
+                  className="block w-full text-left px-3 py-2 bg-ink/[0.03] hover:bg-ink hover:text-paper"
+                >
+                  <div className="mono text-[10px] tracking-widest">
+                    USE &ldquo;{typed.length > 28 ? typed.slice(0, 26) + "…" : typed}&rdquo;
+                  </div>
+                  <div className="mono text-[9px] tracking-widest opacity-60 mt-0.5">
+                    + DROP THE PIN ON THE MAP
+                  </div>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        {latlng ? (
+          <div className="mono text-[10px] mt-2 opacity-70">
+            PIN · {latlng.lat.toFixed(4)}, {latlng.lng.toFixed(4)}
+            {picked?.hint ? ` · ${picked.hint}` : ""}
+          </div>
+        ) : (
+          <p className="mono text-[10px] mt-1 opacity-50">
+            Pick a suggestion, or click the map to drop the pin.
+          </p>
+        )}
+      </div>
+    );
   }
 
   // ====== submit ======
@@ -487,6 +585,7 @@ export function CardCreate({
               setPicked(null);
               if (!query) setQuery("Custom pin");
               confirm("locationQuery");
+              setSuggestOpen(false);
             }}
             gestureHandling={false}
           />
@@ -781,47 +880,7 @@ export function CardCreate({
             </div>
 
             {/* LOCATION — search OR click on the map */}
-            <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">
-                LOCATION
-                {searching && <span className="ml-2 opacity-60">SEARCHING…</span>}
-              </label>
-              <div className="relative">
-                <input
-                  value={query}
-                  onChange={(e) => { setQuery(e.target.value); setPicked(null); confirm("locationQuery"); }}
-                  placeholder="Search a shop, street, quartier — or click the map"
-                  className="input mt-1"
-                />
-                {suggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full bg-paper border border-ink border-t-0 z-20 max-h-72 overflow-y-auto">
-                    {suggestions.map((s, i) => (
-                      <button
-                        key={`${s.label}-${s.lat}-${s.lng}-${i}`}
-                        type="button"
-                        onClick={() => pickLocation(s)}
-                        className="block w-full text-left px-3 py-2 hover:bg-ink hover:text-paper border-b border-rule last:border-b-0"
-                      >
-                        <div className="font-medium text-[13px] leading-tight">{s.label}</div>
-                        <div className="mono text-[9px] tracking-widest opacity-60 mt-0.5">
-                          {s.source === "quartier" ? "◆ " : "● "}
-                          {s.hint || "PARIS"}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {latlng && (
-                <div className="mono text-[10px] mt-2 opacity-70">
-                  📍 {latlng.lat.toFixed(4)}, {latlng.lng.toFixed(4)}
-                  {picked?.hint ? ` · ${picked.hint}` : ""}
-                </div>
-              )}
-              <p className="mono text-[10px] mt-1 opacity-50">
-                The pin lands wherever you click on the big map.
-              </p>
-            </div>
+            {renderLocationField()}
 
             {/* EXTERNAL LINK — optional */}
             <div>
@@ -1165,46 +1224,7 @@ export function CardCreate({
             </div>
 
             {/* LOCATION */}
-            <div>
-              <label className="mono text-[10px] tracking-widest opacity-70">
-                LOCATION
-                {searching && <span className="ml-2 opacity-60">SEARCHING…</span>}
-              </label>
-              <div className="relative">
-                <input
-                  value={query}
-                  onChange={(e) => { setQuery(e.target.value); setPicked(null); confirm("locationQuery"); }}
-                  placeholder="Le Comptoir Général, 27 rue Volta, Belleville…"
-                  className="input mt-1"
-                />
-                {suggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full bg-paper border border-ink border-t-0 z-20 max-h-72 overflow-y-auto">
-                    {suggestions.map((s, i) => (
-                      <button
-                        key={`${s.label}-${s.lat}-${s.lng}-${i}`}
-                        type="button"
-                        onClick={() => pickLocation(s)}
-                        className="block w-full text-left px-3 py-2 hover:bg-ink hover:text-paper border-b border-rule last:border-b-0"
-                      >
-                        <div className="font-medium text-[13px] leading-tight">{s.label}</div>
-                        <div className="mono text-[9px] tracking-widest opacity-60 mt-0.5">
-                          {s.source === "quartier" ? "◆ " : "● "}
-                          {s.hint || "PARIS"}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {latlng && (
-                <div className="mono text-[10px] mt-2 opacity-70">
-                  PIN · {latlng.lat.toFixed(4)}, {latlng.lng.toFixed(4)}
-                </div>
-              )}
-              <p className="mono text-[10px] mt-1 opacity-50">
-                Real Paris addresses + venues — type a shop, bar, street, quartier.
-              </p>
-            </div>
+            {renderLocationField()}
 
             {/* EXTERNAL LINK — optional */}
             <div>
@@ -1237,6 +1257,7 @@ export function CardCreate({
                   setPicked(null);
                   if (!query) setQuery("Custom pin");
                   confirm("locationQuery");
+              setSuggestOpen(false);
                 }}
               />
             </div>
