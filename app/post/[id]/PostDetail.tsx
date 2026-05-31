@@ -14,7 +14,7 @@ import { cardColor, isDark } from "@/lib/color";
 import { fetchCardById } from "@/lib/db";
 import { useRealtimeCards } from "@/lib/realtime";
 import type { Card } from "@/lib/types";
-import { expiresIn, timeAgo, fullStartLabel, parisClockLabel } from "@/lib/time";
+import { timeAgo, fullStartLabel, parisClockLabel } from "@/lib/time";
 import { shareCard } from "@/lib/share";
 
 export function PostDetail({ id }: { id: string }) {
@@ -236,9 +236,6 @@ export function PostDetail({ id }: { id: string }) {
               <span className={`mono text-[10px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}>
                 {headlineTag}
               </span>
-              <span className="mono text-[10px] tracking-widest opacity-90">
-                {card.location?.label.toUpperCase() || "PARIS"}
-              </span>
             </div>
             <h1 className={`editorial font-black text-[42px] sm:text-[88px] mt-3 max-w-[20ch] ${dark ? "text-paper" : "text-ink"}`}>
               {card.title}
@@ -265,13 +262,8 @@ export function PostDetail({ id }: { id: string }) {
               <span className="tag flex items-center gap-1.5"><span className="cp-idea-mark" /> IDEA</span>
             ) : (
               <>
-                <span className="tag">{card.permission === "request" ? "REQUEST" : "PUBLIC JOIN"}</span>
+                <span className="tag">{card.permission === "request" ? "REQUEST" : "PUBLIC"}</span>
                 <span className="tabular-nums">{card.joiners.length}/{card.spots ?? "—"} PEOPLE</span>
-                {card.expiresAt && (
-                  <span className={`tag ${card.expiresAt <= Date.now() ? "bg-ink text-paper" : ""}`}>
-                    {expiresIn(card.expiresAt).toUpperCase()}
-                  </span>
-                )}
               </>
             )}
           </div>
