@@ -207,6 +207,39 @@ export async function fetchField(): Promise<{ ideas: Card[]; things: Card[] }> {
   return { ideas, things };
 }
 
+/** IDs of everyone `userId` follows (public read via anon client). */
+export async function fetchFollowingIds(userId: string): Promise<string[]> {
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("follows")
+    .select("following_id")
+    .eq("follower_id", userId);
+  if (error) return [];
+  return (data || []).map((r) => (r as { following_id: string }).following_id);
+}
+
+/** How many people follow `userId`. */
+export async function fetchFollowerCount(userId: string): Promise<number> {
+  if (!userId) return 0;
+  const { count } = await supabase
+    .from("follows")
+    .select("follower_id", { head: true, count: "exact" })
+    .eq("following_id", userId);
+  return count ?? 0;
+}
+
+/** Whether `followerId` follows `followingId`. */
+export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
+  if (!followerId || !followingId) return false;
+  const { data } = await supabase
+    .from("follows")
+    .select("following_id")
+    .eq("follower_id", followerId)
+    .eq("following_id", followingId)
+    .maybeSingle();
+  return !!data;
+}
+
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")

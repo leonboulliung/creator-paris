@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { SignedIn, SignedOut, SignUpButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignUpButton, useUser } from "@clerk/nextjs";
 import { Header } from "@/components/Header";
 import { ParisMap } from "@/components/ParisMap";
 import { FeedPanel } from "@/components/FeedPanel";
 import { CardComposer } from "@/components/CardComposer";
-import { fetchField } from "@/lib/db";
+import { fetchField, fetchFollowingIds } from "@/lib/db";
 import { useRealtimeCards } from "@/lib/realtime";
 import type { Card } from "@/lib/types";
 import { useIsDesktop } from "@/lib/hooks";
@@ -19,10 +19,12 @@ const PANEL_MOBILE_PEEK = 52;
 
 export default function HomePage() {
   const router = useRouter();
+  const { user } = useUser();
   // The composer can be opened pre-tilted to "idea" or "thing".
   const [composing, setComposing] = useState<null | "idea" | "thing">(null);
   const [ideas, setIdeas] = useState<Card[]>([]);
   const [things, setThings] = useState<Card[]>([]);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
   // IDs we've already seen, to flag genuinely new arrivals (not first load).
@@ -82,6 +84,18 @@ export default function HomePage() {
 
   useRealtimeCards(refresh);
 
+  // Who the signed-in user follows — drives the prioritized "FOLLOWING"
+  // section. Re-fetched when the user changes (e.g. after sign-in).
+  useEffect(() => {
+    if (!user?.id) {
+      setFollowingIds(new Set());
+      return;
+    }
+    fetchFollowingIds(user.id)
+      .then((ids) => setFollowingIds(new Set(ids)))
+      .catch(() => {});
+  }, [user?.id]);
+
   // Pins for both kinds — things filled, ideas hollow. Ideas without a
   // location are simply not pinned (handled inside ParisMap).
   const mapCards = [...things, ...ideas];
@@ -127,6 +141,7 @@ export default function HomePage() {
                 freshIds={freshIds}
                 onChanged={refresh}
                 onCompose={(kind) => setComposing(kind)}
+                followingIds={followingIds}
               />
             </>
           )}

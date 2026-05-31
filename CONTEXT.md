@@ -32,13 +32,16 @@ Tonalität: editorial Schwarz-Weiß-Minimal (Inter + JetBrains Mono), Polymarket
 
 | Tabelle | Felder (gekürzt) |
 |---|---|
-| `profiles` | id (= Clerk user id), display_name, avatar_url, socials JSONB `{instagram, telegram, whatsapp, site}`, interests text[], updated_at |
-| `cards` | id, owner_id → profiles, title, description, category, color, location JSONB `{lat, lng, label}`, spots int, permission `public\|request`, starts_at, expires_at, archived bool, created_at |
-| `card_joiners` | card_id, user_id, role, joined_at — Owner ist auto-joiner mit `role="creator"` |
-| `card_requests` | card_id, user_id, message, created_at |
+| `profiles` | id (= Clerk user id), display_name, avatar_url, bio, socials JSONB `{instagram, telegram, whatsapp, site}`, interests text[], username_changed_at, updated_at |
+| `cards` | id, owner_id → profiles, **kind `idea\|thing`** (default thing), title, description, tags text[], color, location JSONB nullable, spots int nullable, permission nullable, expires_at (=start) nullable, ends_at, external_url, archived bool, created_at |
+| `joiners` | card_id, user_id, role, joined_at — Owner ist auto-joiner mit `role="creator"` |
+| `join_requests` | card_id, user_id, requested_at |
+| `signals` | card_id, user_id, created_at — Resonanz auf eine **Idee** (leichter als joiners) |
+| `follows` | follower_id, following_id, created_at — Folgen; speist die „FOLLOWING"-Sektion im Feld |
 
 **Regeln:**
-- Genau 1 Card aktiv pro User. Beim POST wird die vorherige Card auto-archived.
+- Zwei Objektarten auf `cards`: **Idee** (billig, Text reicht, sammelt Signale) und **Sache** (konkret, joinbar). Transform Idee→Sache flippt `kind` in-place (siehe `/api/cards/[id]/transform`), Signalgeber werden zu warmer Crew (`join_requests`).
+- Genau 1 *Sache* aktiv pro User. Beim POST wird die vorherige auto-archived. Ideen dürfen viele gleichzeitig schweben.
 - "Aktiv" = `!archived AND expires_at > now AND joiners.length < spots`
 - `starts_at` muss in `[now+5min, now+30d]` liegen
 - Andere Joiner-Rollen sind vom Creator custom-benennbar

@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { Header } from "@/components/Header";
 import { Constellation } from "@/components/Constellation";
-import { fetchProfile, fetchTrackRecord } from "@/lib/db";
+import { FollowButton } from "@/components/FollowButton";
+import { fetchProfile, fetchTrackRecord, fetchFollowerCount, isFollowing } from "@/lib/db";
 import { useRealtimeCards } from "@/lib/realtime";
 import type { Profile, TrackEntry } from "@/lib/types";
 import { expiresIn, timeAgo } from "@/lib/time";
@@ -48,6 +49,8 @@ export function ProfileView({ userId }: { userId: string }) {
   const [track, setTrack] = useState<TrackEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<Tab>("track");
+  const [following, setFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
 
   // If you land on your own /u/<id>, bounce to the editable /carnet.
   useEffect(() => {
@@ -63,6 +66,20 @@ export function ProfileView({ userId }: { userId: string }) {
       })
       .catch(() => setLoaded(true));
   }, [userId]);
+
+  // Follow state: whether I follow them + their follower count.
+  const refreshFollow = useCallback(() => {
+    fetchFollowerCount(userId).then(setFollowerCount).catch(() => {});
+    if (currentUser?.id) {
+      isFollowing(currentUser.id, userId).then(setFollowing).catch(() => {});
+    } else {
+      setFollowing(false);
+    }
+  }, [userId, currentUser?.id]);
+
+  useEffect(() => {
+    refreshFollow();
+  }, [refreshFollow]);
 
   useEffect(() => {
     refresh();
@@ -131,15 +148,27 @@ export function ProfileView({ userId }: { userId: string }) {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="mono text-[10px] tracking-widest opacity-60">PROFILE</div>
-              <h1 className="editorial font-black text-[34px] sm:text-[56px] leading-[1.05] mt-1 pb-1 truncate">
-                @{profile.displayName}
-              </h1>
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="mono text-[10px] tracking-widest opacity-60">PROFILE</div>
+                  <h1 className="editorial font-black text-[34px] sm:text-[56px] leading-[1.05] mt-1 pb-1 truncate">
+                    @{profile.displayName}
+                  </h1>
+                </div>
+                <div className="shrink-0 pt-1">
+                  <FollowButton
+                    targetId={profile.id}
+                    following={following}
+                    onChanged={refreshFollow}
+                  />
+                </div>
+              </div>
               {profile.bio && (
                 <p className="mt-2 text-[14px] leading-[1.4] max-w-xl">{profile.bio}</p>
               )}
               <div className="mono text-[11px] mt-2 opacity-70">
                 {counts.total} ENTR{counts.total === 1 ? "Y" : "IES"} · {counts.created} CREATED · {counts.joined} JOINED
+                {followerCount > 0 && ` · ${followerCount} FOLLOWER${followerCount === 1 ? "" : "S"}`}
               </div>
               {profile.interests && profile.interests.length > 0 && (
                 <div className="mono text-[10px] tracking-widest mt-2 opacity-70 flex flex-wrap gap-1">

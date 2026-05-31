@@ -17,6 +17,8 @@ interface Props {
   onChanged?: () => void;
   /** Open the composer pre-tilted to a kind. */
   onCompose?: (kind: "idea" | "thing") => void;
+  /** Owner IDs the current user follows — their cards lead the field. */
+  followingIds?: Set<string>;
 }
 
 /**
@@ -39,10 +41,24 @@ export function FeedPanel({
   freshIds,
   onChanged,
   onCompose,
+  followingIds,
 }: Props) {
   const isDesktop = useIsDesktop();
   const total = ideas.length + things.length;
   const collapseLabel = isDesktop ? "HIDE ›" : "MAP ↓";
+
+  // Cards from people you follow lead the field as a prioritized section.
+  const isFollowed = (c: Card) => !!followingIds?.has(c.ownerId);
+  const followed = [...things, ...ideas].filter(isFollowed);
+  const restIdeas = ideas.filter((c) => !isFollowed(c));
+  const restThings = things.filter((c) => !isFollowed(c));
+
+  const renderCard = (c: Card, i: number) =>
+    c.kind === "idea" ? (
+      <IdeaItem key={c.id} card={c} index={i} isFresh={freshIds?.has(c.id)} onChanged={onChanged} />
+    ) : (
+      <CardItem key={c.id} card={c} index={i} isFresh={freshIds?.has(c.id)} />
+    );
 
   const sectionLabel = (text: string) => (
     <div className="sticky top-0 z-10 bg-paper/95 backdrop-blur-sm border-b border-ink px-4 py-2.5 flex items-center justify-between gap-2">
@@ -88,11 +104,19 @@ export function FeedPanel({
 
   const listBody = (
     <div className="flex-1 overflow-y-auto bg-paper">
+      {/* FOLLOWING — cards from people you follow, surfaced first. */}
+      {followed.length > 0 && (
+        <>
+          {sectionLabel("FOLLOWING")}
+          {followed.map((c, i) => renderCard(c, i))}
+        </>
+      )}
+
       {/* IDEAS — lead with the intellectual life of the city. */}
-      {ideas.length > 0 && (
+      {restIdeas.length > 0 && (
         <>
           {sectionLabel("IDEAS")}
-          {ideas.map((c, i) => (
+          {restIdeas.map((c, i) => (
             <IdeaItem
               key={c.id}
               card={c}
@@ -105,10 +129,10 @@ export function FeedPanel({
       )}
 
       {/* THINGS — concrete, joinable. */}
-      {things.length > 0 && (
+      {restThings.length > 0 && (
         <>
           {sectionLabel("THINGS")}
-          {things.map((c, i) => (
+          {restThings.map((c, i) => (
             <CardItem key={c.id} card={c} index={i} isFresh={freshIds?.has(c.id)} />
           ))}
         </>
