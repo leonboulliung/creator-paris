@@ -36,6 +36,11 @@ export function useRealtimeCards(refresh: () => void) {
           { event: "*", schema: "public", table: "join_requests" },
           () => !cancelled && refresh(),
         )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "signals" },
+          () => !cancelled && refresh(),
+        )
         .subscribe();
     } catch (e) {
       // eslint-disable-next-line no-console

@@ -13,13 +13,16 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
 
   const { data: card } = await admin
     .from("cards")
-    .select("id, owner_id, permission, spots, archived, expires_at")
+    .select("id, owner_id, kind, permission, spots, archived, expires_at")
     .eq("id", params.id)
     .maybeSingle();
   if (!card) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  // You join a thing; an idea is signalled, not joined.
+  if (card.kind === "idea")
+    return NextResponse.json({ error: "not_a_thing" }, { status: 400 });
   if (card.owner_id === userId)
     return NextResponse.json({ error: "owner_cant_join" }, { status: 400 });
-  if (card.archived || new Date(card.expires_at).getTime() <= Date.now())
+  if (card.archived || (card.expires_at && new Date(card.expires_at).getTime() <= Date.now()))
     return NextResponse.json({ error: "expired" }, { status: 400 });
 
   if (card.permission === "public") {

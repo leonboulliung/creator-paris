@@ -86,14 +86,21 @@ export default function CarnetPage() {
   }, [user, refresh]);
   useRealtimeCards(refresh);
 
-  const mapCards = useMemo(() => track.map((t) => t.card), [track]);
+  // Only cards with a real location can be plotted / postered. Ideas without
+  // a loose pin are simply omitted from the geographic surfaces.
+  const mapCards = useMemo(
+    () => track.map((t) => t.card).filter((c) => !!c.location),
+    [track],
+  );
   const counts = useMemo(() => {
     const created = track.filter((t) => t.isCreator).length;
     const joined = track.length - created;
     const rolesPlayed = new Set(
       track.filter((t) => !t.isCreator).map((t) => t.role).filter(Boolean),
     ).size;
-    const quartiers = new Set(track.map((t) => t.card.location.label)).size;
+    const quartiers = new Set(
+      track.map((t) => t.card.location?.label).filter(Boolean),
+    ).size;
     const monthsSpan = (() => {
       if (track.length === 0) return 0;
       const months = new Set(track.map((t) => {
@@ -275,9 +282,9 @@ export default function CarnetPage() {
                         try {
                           await downloadCarnetPoster(
                             mapCards.map((c) => ({
-                              lat: c.location.lat,
-                              lng: c.location.lng,
-                              label: c.location.label,
+                              lat: c.location!.lat,
+                              lng: c.location!.lng,
+                              label: c.location!.label,
                               title: c.title,
                               createdAt: c.createdAt,
                               color: cardColor(c),
@@ -419,7 +426,7 @@ function TrackLine({
           </span>
           <span className="text-[14px] leading-snug truncate group-hover:underline decoration-2 underline-offset-2">
             {card.title}
-            <span className="opacity-50"> — {card.location.label}</span>
+            {card.location?.label && <span className="opacity-50"> — {card.location.label}</span>}
           </span>
         </Link>
         <div className="flex items-center gap-2">
@@ -458,10 +465,12 @@ function TrackRow({
   const { card, role, at, isCreator } = entry;
   const color = cardColor(card);
   const dark = isDark(color);
-  const headlineTag = card.tags?.[0]?.toUpperCase() || "ONE THING";
+  const isIdea = card.kind === "idea";
+  const headlineTag = card.tags?.[0]?.toUpperCase() || (isIdea ? "IDEA" : "THING");
   const [busy, setBusy] = useState(false);
   const now = Date.now();
-  const status = card.archived || card.expiresAt <= now ? "ARCHIVED" : "ACTIVE";
+  const status =
+    card.archived || (card.expiresAt != null && card.expiresAt <= now) ? "ARCHIVED" : "ACTIVE";
 
   // Crew = creator + joiners. De-duped, max 6 visible.
   const allCrew = [
@@ -512,7 +521,7 @@ function TrackRow({
             >
               {isCreator ? "CREATOR" : role.toUpperCase() || "JOINER"}
             </span>
-            <span>{card.location.label.toUpperCase()}</span>
+            <span>{(card.location?.label || (isIdea ? "IDEA" : "PARIS")).toUpperCase()}</span>
             <span className="ml-auto">{timeAgo(at)}</span>
           </div>
 
@@ -528,11 +537,15 @@ function TrackRow({
                 {isCreator ? "BY YOU" : `BY @${card.owner.displayName}`}
               </Link>
               <span>·</span>
-              <span>
-                {card.joiners.length}/{card.spots} PEOPLE
-              </span>
-              <span>·</span>
-              <span>{expiresIn(card.expiresAt).toUpperCase()}</span>
+              {isIdea ? (
+                <span>{card.signals.length} RESONATING</span>
+              ) : (
+                <>
+                  <span>{card.joiners.length}/{card.spots ?? "—"} PEOPLE</span>
+                  <span>·</span>
+                  <span>{card.expiresAt ? expiresIn(card.expiresAt).toUpperCase() : "OPEN"}</span>
+                </>
+              )}
             </div>
             {allCrew.length > 0 && (
               <div className="flex items-center gap-2 ml-auto">

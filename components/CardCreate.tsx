@@ -29,6 +29,8 @@ const TAG_SUGGESTIONS = [
  * extracted verbatim, and gets a ✦ hint next to the label.
  */
 export interface CardDraft {
+  /** Which object the AI judged this to be. Defaults to "thing" downstream. */
+  kind?: "idea" | "thing";
   title?: string;
   description?: string | null;
   tags?: string[];

@@ -75,7 +75,9 @@ export function ProfileView({ userId }: { userId: string }) {
     const rolesPlayed = new Set(
       track.filter((t) => !t.isCreator).map((t) => t.role).filter(Boolean),
     ).size;
-    const quartiers = new Set(track.map((t) => t.card.location.label)).size;
+    const quartiers = new Set(
+      track.map((t) => t.card.location?.label).filter(Boolean),
+    ).size;
     const monthsSpan = new Set(
       track.map((t) => {
         const d = new Date(t.at);
@@ -267,9 +269,11 @@ function PublicTrackRow({ entry }: { entry: TrackEntry }) {
   const { card, role, at, isCreator } = entry;
   const color = cardColor(card);
   const dark = isDark(color);
-  const headlineTag = card.tags?.[0]?.toUpperCase() || "ONE THING";
+  const isIdea = card.kind === "idea";
+  const headlineTag = card.tags?.[0]?.toUpperCase() || (isIdea ? "IDEA" : "THING");
   const now = Date.now();
-  const status = card.archived || card.expiresAt <= now ? "ARCHIVED" : "ACTIVE";
+  const status =
+    card.archived || (card.expiresAt != null && card.expiresAt <= now) ? "ARCHIVED" : "ACTIVE";
 
   const allCrew = [
     { id: card.owner.id, displayName: card.owner.displayName, avatarUrl: card.owner.avatarUrl },
@@ -304,7 +308,7 @@ function PublicTrackRow({ entry }: { entry: TrackEntry }) {
             <span className={`px-1.5 py-0.5 border border-ink ${isCreator ? "bg-ink text-paper" : "bg-paper text-ink"}`}>
               {isCreator ? "CREATOR" : role.toUpperCase() || "JOINER"}
             </span>
-            <span>{card.location.label.toUpperCase()}</span>
+            <span>{(card.location?.label || (isIdea ? "IDEA" : "PARIS")).toUpperCase()}</span>
             <span className="ml-auto">{timeAgo(at)}</span>
           </div>
           <Link href={`/post/${card.id}`} className="block group">
@@ -316,9 +320,15 @@ function PublicTrackRow({ entry }: { entry: TrackEntry }) {
             <div className="mono text-[11px] opacity-70 flex items-center gap-2 flex-wrap">
               <span>BY @{card.owner.displayName}</span>
               <span>·</span>
-              <span>{card.joiners.length}/{card.spots} PEOPLE</span>
-              <span>·</span>
-              <span>{expiresIn(card.expiresAt).toUpperCase()}</span>
+              {isIdea ? (
+                <span>{card.signals.length} RESONATING</span>
+              ) : (
+                <>
+                  <span>{card.joiners.length}/{card.spots ?? "—"} PEOPLE</span>
+                  <span>·</span>
+                  <span>{card.expiresAt ? expiresIn(card.expiresAt).toUpperCase() : "OPEN"}</span>
+                </>
+              )}
             </div>
             {allCrew.length > 0 && (
               <div className="flex items-center gap-2 ml-auto">
@@ -387,7 +397,7 @@ function PublicTrackLine({ entry }: { entry: TrackEntry }) {
         </span>
         <span className="text-[14px] leading-snug truncate group-hover:underline decoration-2 underline-offset-2">
           {card.title}
-          <span className="opacity-50"> — {card.location.label}</span>
+          {card.location?.label && <span className="opacity-50"> — {card.location.label}</span>}
         </span>
         <span className="mono text-[10px] tracking-widest opacity-70">
           {isCreator ? "POSTED" : role}

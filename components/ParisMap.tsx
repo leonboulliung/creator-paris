@@ -232,11 +232,14 @@ export function ParisMap({
     const L = LRef.current;
     layerRef.current.clearLayers();
     for (const c of cards) {
+      // An idea may have no location — nothing to pin on the map.
+      if (!c.location) continue;
       const isFresh = freshIds?.has(c.id);
+      const isIdea = c.kind === "idea";
       const color = cardColor(c);
       const icon = L.divIcon({
         className: "",
-        html: `<div class="cp-pin ${isFresh ? "fresh" : ""}" style="--pin-color:${color}"></div>`,
+        html: `<div class="cp-pin ${isIdea ? "idea" : ""} ${isFresh ? "fresh" : ""}" style="--pin-color:${color}"></div>`,
         iconSize: [12, 12],
         iconAnchor: [6, 6],
       });
@@ -253,7 +256,7 @@ export function ParisMap({
         // Hide the hover tooltip — the click preview takes over.
         m.closeTooltip();
         if (!ref.current || !mapRef.current) return;
-        const pt = mapRef.current.latLngToContainerPoint([c.location.lat, c.location.lng]);
+        const pt = mapRef.current.latLngToContainerPoint([c.location!.lat, c.location!.lng]);
         setPreview({ card: c, x: pt.x, y: pt.y });
         L.DomEvent.stopPropagation(e);
       });
@@ -313,11 +316,15 @@ export function ParisMap({
           style={{ left: preview.x, top: preview.y + 14, width: 260 }}
         >
           <div className="px-3 py-2 border-b border-ink mono text-[10px] tracking-widest flex justify-between">
-            <span>{preview.card.location.label.toUpperCase()}</span>
+            <span className="flex items-center gap-1.5">
+              {preview.card.kind === "idea" && <span className="cp-idea-mark" />}
+              {preview.card.location?.label.toUpperCase() ||
+                (preview.card.kind === "idea" ? "IDEA" : "PARIS")}
+            </span>
             <span className="opacity-70">
               {preview.card.expiresAt
                 ? new Date(preview.card.expiresAt).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" }).toUpperCase()
-                : ""}
+                : preview.card.kind === "idea" ? "OPEN" : ""}
             </span>
           </div>
           <div className="px-3 py-2">
@@ -325,7 +332,9 @@ export function ParisMap({
               {preview.card.title}
             </div>
             <div className="mono text-[10px] mt-2 opacity-70">
-              {preview.card.joiners.length}/{preview.card.spots} PEOPLE · TAP TO OPEN →
+              {preview.card.kind === "idea"
+                ? `${preview.card.signals.length} RESONATING · TAP TO OPEN →`
+                : `${preview.card.joiners.length}/${preview.card.spots ?? "—"} PEOPLE · TAP TO OPEN →`}
             </div>
           </div>
         </button>

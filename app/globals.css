@@ -334,3 +334,83 @@ body {
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
   border: 1px solid #0a0a0a; padding: 3px 7px;
 }
+
+/* ============================================================
+   IDEA vs THING — the two object kinds must look + feel distinct.
+
+   A THING is concrete: bold color block, loud, joinable (existing look).
+   An IDEA is latent: quiet paper, a hand-drawn-feeling dashed frame, a
+   resonance meter. It reads as a thought in the field, not an event.
+   ============================================================ */
+
+/* The idea "mark" — a small open ring (a thought, not yet solid). */
+.cp-idea-mark {
+  display: inline-block;
+  width: 9px; height: 9px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+/* An idea row/card: paper ground + a dashed left rule that signals "open,
+   not yet built". The dash is the single strongest tell vs. a thing's
+   solid color block. */
+.cp-idea-frame {
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(10, 10, 10, 0.015),
+      rgba(10, 10, 10, 0.015) 2px,
+      transparent 2px,
+      transparent 7px
+    ),
+    var(--paper);
+}
+.cp-idea-edge {
+  border-left: 2px dashed rgba(10, 10, 10, 0.45);
+}
+
+/* Resonance meter — accumulated signals shown as a row of small filled dots.
+   Empty dots are open potential; filled dots are people who want it real. */
+.cp-reso-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  border: 1.4px solid #0a0a0a;
+  background: transparent;
+  flex-shrink: 0;
+}
+.cp-reso-dot.on { background: #0a0a0a; }
+.cp-reso-dot.warm.on { background: #c2452f; border-color: #c2452f; }
+
+/* The SIGNAL button — large, inviting tap target. Outline at rest, fills
+   warm on hover/active so the act of resonating feels physical. */
+.cp-signal-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 12px 18px;
+  border: 1.5px solid #0a0a0a;
+  background: transparent; color: #0a0a0a;
+  transition: background-color .18s ease, color .18s ease, transform .12s ease;
+  min-height: 44px;
+}
+.cp-signal-btn:hover { transform: translateY(-1px); background: #0a0a0a; color: #fafafa; }
+.cp-signal-btn.on {
+  background: #c2452f; color: #fafafa; border-color: #c2452f;
+}
+.cp-signal-btn.on:hover { background: #a83a28; }
+
+/* When an idea has crossed a resonance threshold, the transform CTA breathes
+   to say "this is ready to become real". */
+.cp-ready { animation: breathe 3.6s ease-in-out infinite; }
+
+/* Map pin for an IDEA — a hollow ring instead of a filled disc, so ideas and
+   things are tellable apart even on the map. */
+.cp-pin.idea {
+  background: transparent;
+  border: 2px solid var(--pin-color, #0a0a0a);
+  box-shadow: 0 0 0 2px #ffffff;
+}
+.cp-pin.idea::after { opacity: 0; animation: none; }

@@ -1,13 +1,12 @@
 import type { MetadataRoute } from "next";
-import { fetchActiveCards } from "@/lib/db";
+import { fetchField } from "@/lib/db";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://creator-paris.vercel.app";
 
-// Dynamic sitemap: the home page, every active Thing, and the public
-// profile of each Thing's creator. Cards are ephemeral (they expire), so
-// we only surface what's currently live — the freshest crawlable content.
-// Revalidated hourly so we don't hammer the DB on every crawl.
+// Dynamic sitemap: the home page, every live idea + thing (each is a
+// self-contained recruiting landing page — the unit of distribution), and
+// the public profile of each author. Revalidated hourly.
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -15,9 +14,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/`, changeFrequency: "hourly", priority: 1 },
   ];
 
-  let cards: Awaited<ReturnType<typeof fetchActiveCards>> = [];
+  let cards: Awaited<ReturnType<typeof fetchField>>["ideas"] = [];
   try {
-    cards = await fetchActiveCards();
+    const { ideas, things } = await fetchField();
+    cards = [...ideas, ...things];
   } catch {
     return base;
   }

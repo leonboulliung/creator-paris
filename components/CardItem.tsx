@@ -27,8 +27,9 @@ export function CardItem({
   const dark = isDark(color);
   const { user } = useUser();
   const mine = user?.id === card.ownerId;
-  // First tag headlines the swatch (e.g. FASHION-SHOOT). Falls back to ONE THING.
-  const headlineTag = card.tags?.[0]?.toUpperCase() || "ONE THING";
+  // First tag headlines the swatch (e.g. FASHION-SHOOT). Falls back to THING —
+  // the swatch's solid color block already reads "concrete + joinable".
+  const headlineTag = card.tags?.[0]?.toUpperCase() || "THING";
 
   return (
     <Link
@@ -52,7 +53,7 @@ export function CardItem({
           <div className="mono text-[10px] tracking-widest flex items-center gap-2 opacity-70">
             <span className="tabular-nums">#{String(index + 1).padStart(3, "0")}</span>
             <span>·</span>
-            <span className="truncate">{card.location.label.toUpperCase()}</span>
+            <span className="truncate">{(card.location?.label || "PARIS").toUpperCase()}</span>
             {isFresh && (
               <span className="shrink-0 mono text-[9px] tracking-widest px-1 py-0.5 bg-ink text-paper animate-twinkle">
                 NEW ✦
@@ -81,10 +82,10 @@ export function CardItem({
           <div className="mt-3 mono text-[11px]">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="tag">
-                {card.permission === "public" ? "PUBLIC JOIN" : "REQUEST"}
+                {card.permission === "request" ? "REQUEST" : "PUBLIC JOIN"}
               </span>
               <span className="tabular-nums">
-                {card.joiners.length}/{card.spots} PEOPLE
+                {card.joiners.length}/{card.spots ?? "—"} PEOPLE
               </span>
               {card.expiresAt && (
                 <span className="tabular-nums opacity-70">

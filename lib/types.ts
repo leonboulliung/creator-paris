@@ -1,5 +1,14 @@
 export type Permission = "public" | "request";
 
+/**
+ * The two object kinds in the field.
+ *  - "idea"  — a thought thrown into the field. Cheap, low-commitment. Just
+ *              text + optional loose location. People give a resonance Signal.
+ *  - "thing" — concrete, doable. People JOIN. ≈ the original "card".
+ * A "thing" is the default so every legacy card keeps its meaning.
+ */
+export type CardKind = "idea" | "thing";
+
 export interface CardLocation {
   lat: number;
   lng: number;
@@ -40,30 +49,55 @@ export interface CardRequest {
   user: Profile;
 }
 
+/**
+ * A resonance Signal on an idea — "I'd want this to exist / I'd help make it
+ * real." Lighter than a joiner: no role, no accept/decline. It is INTENT.
+ * Accumulated signalers are the warm, ready crew an idea carries forward when
+ * it transforms into a thing.
+ */
+export interface Signal {
+  userId: string;
+  createdAt: number;
+  user: Profile;
+}
+
 export interface Card {
   id: string;
+  /** "idea" or "thing". Drives the whole visual + behavioral split. */
+  kind: CardKind;
   ownerId: string;
   owner: Profile;
   title: string;
   description: string;
-  location: CardLocation;
-  spots: number;
-  permission: Permission;
+  /**
+   * An idea may have only a loose location, or none at all. A thing always
+   * resolves one before it's joinable.
+   */
+  location: CardLocation | null;
+  /** Number of spots on a thing. `null` on an idea (no commitment yet). */
+  spots: number | null;
+  /** Join permission on a thing. `null` on an idea. */
+  permission: Permission | null;
   /** Free-form tags (lowercase, hyphenated). AI suggests, user can edit. */
   tags: string[];
   /** Author-picked color. Drives the dominant visual (strip, pin, hero). */
   color: string | null;
   createdAt: number;
-  /** Repurposed column: when the event actually starts. */
-  expiresAt: number;
+  /**
+   * Repurposed column: when a thing actually starts. `null` on an idea
+   * (timing crystallizes only as needed).
+   */
+  expiresAt: number | null;
   /** Optional end time. `null` = open-ended ("until vibe ends"). */
   endsAt: number | null;
   /** Optional "more info" link (GitHub, Strava, Are.na, etc.). */
   externalUrl: string | null;
-  durationDays: number;
+  durationDays: number | null;
   archived: boolean;
   joiners: CardJoiner[];
   requests: CardRequest[];
+  /** Resonance signals — populated for ideas, empty for things. */
+  signals: Signal[];
 }
 
 export interface TrackEntry {

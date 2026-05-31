@@ -25,8 +25,8 @@ function boundsForEntries(entries: TrackEntry[]): [LatLngTuple, LatLngTuple] {
     const e = entries[0];
     const off = 0.012; // ~roughly 1.3km square
     return [
-      [e.card.location.lat - off, e.card.location.lng - off],
-      [e.card.location.lat + off, e.card.location.lng + off],
+      [e.card.location!.lat - off, e.card.location!.lng - off],
+      [e.card.location!.lat + off, e.card.location!.lng + off],
     ];
   }
 
@@ -35,7 +35,7 @@ function boundsForEntries(entries: TrackEntry[]): [LatLngTuple, LatLngTuple] {
   let minLng = Infinity;
   let maxLng = -Infinity;
   for (const e of entries) {
-    const { lat, lng } = e.card.location;
+    const { lat, lng } = e.card.location!;
     if (lat < minLat) minLat = lat;
     if (lat > maxLat) maxLat = lat;
     if (lng < minLng) minLng = lng;
@@ -57,7 +57,13 @@ export function Constellation({ entries, className = "", aspect = "4 / 3" }: Pro
   const overlayRef = useRef<L.LayerGroup | null>(null);
   const [ready, setReady] = useState(false);
 
-  const fitBounds = useMemo(() => boundsForEntries(entries), [entries]);
+  // Only cards with a real location can be plotted. Ideas without a loose pin
+  // are simply omitted from the constellation.
+  const geoEntries = useMemo(
+    () => entries.filter((e) => !!e.card.location),
+    [entries],
+  );
+  const fitBounds = useMemo(() => boundsForEntries(geoEntries), [geoEntries]);
 
   // Mount the Leaflet map once.
   useEffect(() => {
@@ -100,7 +106,7 @@ export function Constellation({ entries, className = "", aspect = "4 / 3" }: Pro
 
       const invalidateAndFit = () => {
         map.invalidateSize({ animate: false });
-        const b = boundsForEntries(entries);
+        const b = boundsForEntries(entries.filter((e) => !!e.card.location));
         map.fitBounds(b as unknown as L.LatLngBoundsExpression, {
           padding: [16, 16],
           animate: false,
@@ -149,12 +155,12 @@ export function Constellation({ entries, className = "", aspect = "4 / 3" }: Pro
     if (!map || !L || !group) return;
     group.clearLayers();
 
-    const ordered = entries.slice().sort((a, b) => a.at - b.at);
+    const ordered = geoEntries.slice().sort((a, b) => a.at - b.at);
 
     if (ordered.length > 1) {
       const latlngs: LatLngTuple[] = ordered.map((e) => [
-        e.card.location.lat,
-        e.card.location.lng,
+        e.card.location!.lat,
+        e.card.location!.lng,
       ]);
       L.polyline(latlngs, {
         color: "#0a0a0a",
@@ -193,7 +199,7 @@ export function Constellation({ entries, className = "", aspect = "4 / 3" }: Pro
         iconSize: [0, 0],
         iconAnchor: [0, 0],
       });
-      L.marker([e.card.location.lat, e.card.location.lng], {
+      L.marker([e.card.location!.lat, e.card.location!.lng], {
         icon,
         interactive: false,
         keyboard: false,
@@ -206,7 +212,7 @@ export function Constellation({ entries, className = "", aspect = "4 / 3" }: Pro
       padding: [16, 16],
       animate: false,
     });
-  }, [entries, ready, fitBounds]);
+  }, [geoEntries, ready, fitBounds]);
 
   return (
     <div

@@ -37,12 +37,31 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(6px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        // A signal landing on an idea: a single warm pop.
+        signalPop: {
+          "0%": { transform: "scale(0.4)", opacity: "0" },
+          "60%": { transform: "scale(1.15)", opacity: "1" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        // The transform CTA on a resonant idea — a slow, inviting breath.
+        breathe: {
+          "0%,100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.015)" },
+        },
+        // Idea entrance: rises like a thought surfacing.
+        rise: {
+          from: { opacity: "0", transform: "translateY(12px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         pulseRing: "pulseRing 1.4s ease-out infinite",
         ticker: "ticker 60s linear infinite",
         twinkle: "twinkle 3s ease-in-out infinite",
         fadeIn: "fadeIn .35s ease-out both",
+        signalPop: "signalPop .45s cubic-bezier(0.34,1.56,0.64,1) both",
+        breathe: "breathe 3.6s ease-in-out infinite",
+        rise: "rise .4s ease-out both",
       },
     },
   },

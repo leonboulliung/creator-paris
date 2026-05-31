@@ -1,7 +1,7 @@
 "use client";
 
 import type { Card } from "./types";
-import { PARIS_BOUNDS } from "./quartiers";
+import { PARIS_BOUNDS, PARIS_CENTER } from "./quartiers";
 import { cardColor, isDark } from "./color";
 
 const W = 1080;
@@ -82,8 +82,11 @@ function drawMiniMap(
 
   // map pin position from lat/lng within bounds
   const [[minLat, minLng], [maxLat, maxLng]] = PARIS_BOUNDS;
-  const nx = (card.location.lng - minLng) / (maxLng - minLng);
-  const ny = 1 - (card.location.lat - minLat) / (maxLat - minLat);
+  // Ideas may have no location — fall back to the Paris center for the pin.
+  const locLat = card.location?.lat ?? PARIS_CENTER[0];
+  const locLng = card.location?.lng ?? PARIS_CENTER[1];
+  const nx = (locLng - minLng) / (maxLng - minLng);
+  const ny = 1 - (locLat - minLat) / (maxLat - minLat);
   const px = x + 6 + Math.max(0, Math.min(1, nx)) * (w - 12);
   const py = y + 6 + Math.max(0, Math.min(1, ny)) * (h - 12);
 
@@ -162,7 +165,9 @@ export async function renderShareImage(card: Card, avatarDataUrl?: string): Prom
 
   // activity tag top-right
   ctx.font = "700 22px 'JetBrains Mono', monospace";
-  const tag = card.permission === "public" ? "JOIN" : "REQUEST";
+  const tag = card.kind === "idea"
+    ? "IDEA"
+    : card.permission === "request" ? "REQUEST" : "JOIN";
   ctx.textAlign = "right";
   ctx.fillText(tag, W - 48, 48);
   ctx.textAlign = "left";
@@ -211,7 +216,7 @@ export async function renderShareImage(card: Card, avatarDataUrl?: string): Prom
   // meta
   ctx.font = "500 22px 'JetBrains Mono', monospace";
   ctx.fillStyle = "#0a0a0a";
-  const meta1 = card.location.label.toUpperCase();
+  const meta1 = (card.location?.label || (card.kind === "idea" ? "AN IDEA FOR PARIS" : "PARIS")).toUpperCase();
   const expiryStr = card.expiresAt
     ? new Date(card.expiresAt)
         .toLocaleString("en-GB", {
@@ -223,7 +228,9 @@ export async function renderShareImage(card: Card, avatarDataUrl?: string): Prom
         })
         .toUpperCase()
     : "";
-  const meta2 = `STARTS ${expiryStr}  ·  ${card.joiners.length}/${card.spots} PEOPLE`;
+  const meta2 = card.kind === "idea"
+    ? `${card.signals.length} RESONATING  ·  OPEN UNTIL IT HAPPENS`
+    : `STARTS ${expiryStr}  ·  ${card.joiners.length}/${card.spots ?? "—"} PEOPLE`;
   ctx.fillText(meta1, 48, ty + 24);
   ctx.fillText(meta2, 48, ty + 56);
 
@@ -271,7 +278,7 @@ function cardUrl(card: Card): string {
 }
 
 function shareText(card: Card): string {
-  return `${card.title} — ${card.location.label}`;
+  return card.location?.label ? `${card.title} — ${card.location.label}` : card.title;
 }
 
 /**
@@ -620,7 +627,9 @@ export function exportCarnetPrintable(cards: Card[], email: string) {
         <div class="meta">${email.toUpperCase()} · ${new Date(c.createdAt).toISOString().slice(0,10)}</div>
         <div class="hero" style="background:${color}"></div>
         <h1>${escapeHtml(c.title)}</h1>
-        <div class="meta">${escapeHtml(c.location.label)} · starts ${escapeHtml(expiryStr)} · ${c.joiners.length}/${c.spots} spots</div>
+        <div class="meta">${c.kind === "idea"
+          ? `idea · ${c.location?.label ? escapeHtml(c.location.label) + " · " : ""}${c.signals.length} resonating`
+          : `${escapeHtml(c.location?.label || "Paris")} · starts ${escapeHtml(expiryStr)} · ${c.joiners.length}/${c.spots ?? "—"} spots`}</div>
         <p class="desc">${escapeHtml(c.description || "")}</p>
         <div class="wm">CREATOR.PARIS — ONE THING, THIS WEEK.</div>
       </div>`;

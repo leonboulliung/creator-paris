@@ -15,8 +15,26 @@ const RATE_WINDOW_MS = 30_000;
  * surfaces "✦ AI guessed" next to those fields so the user knows what to
  * double-check. We'd rather have a half-filled form than a silently wrong one.
  */
-const SYSTEM_PROMPT = `You translate one user sentence describing something they
-want to do in Paris into a structured event card. Return STRICT JSON only.
+const SYSTEM_PROMPT = `You translate one user sentence into a structured card
+for a living city layer in Paris. Return STRICT JSON only.
+
+There are two kinds of card:
+- "idea": a thought thrown into the field — a "wouldn't it be great if we…",
+  a latent doable thing. Low-commitment, often with NO time or place decided
+  yet. Examples: "someone should start a night-photography walk group",
+  "we should turn the old print shop into a zine library". An idea is NOT a
+  hot-take or opinion — it must be something people could actually make real.
+- "thing": a concrete, doable plan with real intent to happen — usually a
+  specific time and/or place, people invited. Examples: "film night about
+  loneliness this Sunday at my place", "shoot for my collection in Le Marais
+  next Saturday 4pm".
+
+Decide "kind":
+- Use "thing" when the input names a specific time OR a specific place OR
+  clearly reads as a concrete plan the author intends to run.
+- Use "idea" when it's a wish / proposal with no committed time and no
+  specific place — a latent possibility, not yet a plan.
+- When unsure, prefer "idea" (it's the lighter, cheaper object).
 
 You must produce these fields. Use null where the input is genuinely silent
 on the matter — DO NOT make up specifics. List every field whose value you
@@ -24,8 +42,10 @@ inferred (rather than directly extracted from the input) in the "inferred"
 array; this is critical, the user needs to know what to double-check.
 
 Schema:
+- kind ("idea" | "thing"): per the rules above.
 - title (string, 4-60 chars): editorial, concrete, not a question. Do NOT
-  echo the location or time inside the title.
+  echo the location or time inside the title. For an idea, phrase it as the
+  thing that could exist, not as a question.
 - description (string|null, 0-160 chars): only when the input gives detail
   worth keeping. Otherwise null.
 - tags (array of 2-5 strings): lowercase, single-concept, hyphenated. Letters,
@@ -65,6 +85,8 @@ Rules:
 - Never invent specifics the user didn't say.
 - Prefer null over a guess for spots, permission, locationQuery, startsAtIso,
   endsAtIso, externalUrl.
+- For an "idea", it is normal and good for startsAtIso, endsAtIso, spots and
+  permission to all be null — an idea is shareable with almost nothing filled.
 - For tags + color it's ok to infer — but always list them in "inferred".
 - Output ONLY the JSON object — no preamble, no prose.`;
 
@@ -142,6 +164,7 @@ const URL_RE = /^https?:\/\/[^\s]+$/i;
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 function sanitize(d: Record<string, unknown>) {
+  const kind: "idea" | "thing" = d.kind === "idea" ? "idea" : "thing";
   const title = typeof d.title === "string" ? d.title.trim().slice(0, 80) : "";
   const description =
     typeof d.description === "string" && d.description.trim().length > 0
@@ -189,6 +212,7 @@ function sanitize(d: Record<string, unknown>) {
     : [];
 
   return {
+    kind,
     title,
     description,
     tags,

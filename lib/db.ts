@@ -1,5 +1,7 @@
 import { supabase } from "./supabase";
-import type { Card, CardJoiner, CardRequest, Profile, Socials, TrackEntry } from "./types";
+import type {
+  Card, CardJoiner, CardKind, CardRequest, Profile, Signal, Socials, TrackEntry,
+} from "./types";
 
 // ============================================================
 // Row → TS mapping (DB uses snake_case; UI uses camelCase)
@@ -29,25 +31,33 @@ type RequestRow = {
   user: ProfileRow | null;
 };
 
+type SignalRow = {
+  user_id: string;
+  created_at: string;
+  user: ProfileRow | null;
+};
+
 type CardRow = {
   id: string;
+  kind: CardKind | null;
   owner_id: string;
   title: string;
   description: string;
-  location: { lat: number; lng: number; label: string };
-  spots: number;
-  permission: "public" | "request";
+  location: { lat: number; lng: number; label: string } | null;
+  spots: number | null;
+  permission: "public" | "request" | null;
   tags: string[] | null;
   color: string | null;
   created_at: string;
-  expires_at: string;
+  expires_at: string | null;
   ends_at: string | null;
   external_url: string | null;
-  duration_days: number;
+  duration_days: number | null;
   archived: boolean;
   owner: ProfileRow | null;
   joiners: JoinerRow[] | null;
   requests: RequestRow[] | null;
+  signals: SignalRow[] | null;
 };
 
 const blankProfile = (id: string): Profile => ({
@@ -92,31 +102,41 @@ function mapRequest(row: RequestRow): CardRequest {
   };
 }
 
+function mapSignal(row: SignalRow): Signal {
+  return {
+    userId: row.user_id,
+    createdAt: new Date(row.created_at).getTime(),
+    user: mapProfile(row.user, row.user_id),
+  };
+}
+
 function mapCard(row: CardRow): Card {
   return {
     id: row.id,
+    kind: row.kind === "idea" ? "idea" : "thing",
     ownerId: row.owner_id,
     owner: mapProfile(row.owner, row.owner_id),
     title: row.title,
     description: row.description || "",
-    location: row.location,
-    spots: row.spots,
-    permission: row.permission,
+    location: row.location ?? null,
+    spots: row.spots ?? null,
+    permission: row.permission ?? null,
     tags: Array.isArray(row.tags) ? row.tags : [],
     color: row.color ?? null,
     createdAt: new Date(row.created_at).getTime(),
-    expiresAt: new Date(row.expires_at).getTime(),
+    expiresAt: row.expires_at ? new Date(row.expires_at).getTime() : null,
     endsAt: row.ends_at ? new Date(row.ends_at).getTime() : null,
     externalUrl: row.external_url ?? null,
-    durationDays: row.duration_days,
+    durationDays: row.duration_days ?? null,
     archived: row.archived,
     joiners: (row.joiners || []).map(mapJoiner),
     requests: (row.requests || []).map(mapRequest),
+    signals: (row.signals || []).map(mapSignal),
   };
 }
 
 const CARD_SELECT = `
-  id, owner_id, title, description, location, spots, permission, tags, color,
+  id, kind, owner_id, title, description, location, spots, permission, tags, color,
   created_at, expires_at, ends_at, external_url, duration_days, archived,
   owner:profiles!cards_owner_id_fkey(id, phone, display_name, avatar_url, socials, interests, bio, created_at),
   joiners:joiners(user_id, role, joined_at,
@@ -124,6 +144,9 @@ const CARD_SELECT = `
   ),
   requests:join_requests(user_id, requested_at,
     user:profiles!join_requests_user_id_fkey(id, phone, display_name, avatar_url, socials, interests, bio, created_at)
+  ),
+  signals:signals(user_id, created_at,
+    user:profiles!signals_user_id_fkey(id, phone, display_name, avatar_url, socials, interests, bio, created_at)
   )
 `;
 
@@ -131,19 +154,57 @@ const CARD_SELECT = `
 // Queries (read-only — go through anon key from client)
 // ============================================================
 
+/**
+ * Live "things" only — concrete, joinable, not yet started, not full.
+ * `expires_at` holds the event START time (legacy column name).
+ * Kept as the canonical name so existing map/feed callers keep working.
+ */
 export async function fetchActiveCards(): Promise<Card[]> {
   const nowIso = new Date().toISOString();
   const { data, error } = await supabase
     .from("cards")
     .select(CARD_SELECT)
+    .eq("kind", "thing")
     .eq("archived", false)
     .gt("expires_at", nowIso) // expires_at column now holds the event start time
     .order("expires_at", { ascending: true });
   if (error) throw error;
   return ((data || []) as unknown as CardRow[])
     .map(mapCard)
-    // Hide cards from public view once their crew is full.
-    .filter((c) => c.joiners.length < c.spots);
+    // Hide things from public view once their crew is full.
+    .filter((c) => c.spots == null || c.joiners.length < c.spots);
+}
+
+/**
+ * Live "ideas" — thoughts in the field. They don't expire and aren't "full";
+ * an idea stays open until it transforms or is archived. Hottest resonance
+ * first (most signals), then most recent.
+ */
+export async function fetchActiveIdeas(): Promise<Card[]> {
+  const { data, error } = await supabase
+    .from("cards")
+    .select(CARD_SELECT)
+    .eq("kind", "idea")
+    .eq("archived", false)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data || []) as unknown as CardRow[])
+    .map(mapCard)
+    .sort((a, b) =>
+      b.signals.length - a.signals.length || b.createdAt - a.createdAt,
+    );
+}
+
+/**
+ * The whole live field: ideas + things, in one fetch. Convenience for the
+ * home surface so it can lead with ideas and layer things on the map.
+ */
+export async function fetchField(): Promise<{ ideas: Card[]; things: Card[] }> {
+  const [ideas, things] = await Promise.all([
+    fetchActiveIdeas(),
+    fetchActiveCards(),
+  ]);
+  return { ideas, things };
 }
 
 export async function fetchProfile(userId: string): Promise<Profile | null> {
