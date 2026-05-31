@@ -27,21 +27,15 @@ export function CardComposer({
 }) {
   const [stage, setStage] = useState<Stage>("prompt");
   const [draft, setDraft] = useState<CardDraft | null>(null);
-  // What the AI prompt should bias toward when the user opens this composer.
-  const promptKind = initialKind;
 
   if (stage === "prompt") {
     return (
       <div className="h-full w-full animate-fadeIn">
         <PromptStep
-          kind={promptKind}
-          onDraft={(d) => {
+          initialKind={initialKind}
+          onProceed={(kind, d) => {
+            // The switch decides the kind; the draft (if any) pre-fills.
             setDraft(d);
-            // The model decides idea-vs-thing; route to the matching composer.
-            setStage(d.kind === "thing" ? "thing" : "idea");
-          }}
-          onManual={(kind) => {
-            setDraft(null);
             setStage(kind);
           }}
           onClose={onClose}

@@ -58,7 +58,6 @@ export function Header({
         </Link>
 
         <div className="mono text-[10px] sm:text-[12px] flex items-center gap-1 sm:gap-2 ml-auto min-w-0">
-          <span className="hidden md:inline opacity-60">PARIS</span>
           <span className="tabular-nums whitespace-nowrap">
             <span className="sm:hidden">{shortClock}</span>
             <span className="hidden sm:inline">{clock || "--:--:--"}</span>

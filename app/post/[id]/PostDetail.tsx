@@ -296,25 +296,39 @@ export function PostDetail({ id }: { id: string }) {
         {/* THING-only: starts/where tiles + map */}
         {!isIdea && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mono text-[11px]">
-              <div className="border border-ink p-3">
-                <div className="opacity-60">STARTS <span className="opacity-60">· PARIS</span></div>
-                <div className="mt-1 text-[14px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[14px]">
+              {/* Time — clock glyph + the moment, nothing else. */}
+              <div className="border border-ink p-3 flex items-start gap-2.5">
+                <svg viewBox="0 0 24 24" width="18" height="18" className="shrink-0 mt-0.5 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3.5 2" strokeLinecap="round" />
+                </svg>
+                <div className="leading-snug">
                   {card.expiresAt ? fullStartLabel(card.expiresAt) : "—"}
-                </div>
-                <div className="opacity-50 mt-1 text-[10px]">
-                  {card.expiresAt ? expiresIn(card.expiresAt).toUpperCase() : ""}
-                  {card.endsAt && (<>{" · ENDS "}<span className="tabular-nums">{parisClockLabel(card.endsAt)}</span></>)}
+                  {card.endsAt && (
+                    <span className="opacity-60"> – {parisClockLabel(card.endsAt)}</span>
+                  )}
                 </div>
               </div>
-              <div className="border border-ink p-3">
-                <div className="opacity-60">WHERE</div>
-                <div className="mt-1 text-[14px]">{card.location?.label || "—"}</div>
-                {card.location && (
-                  <div className="opacity-50 mt-1 text-[10px]">
-                    {card.location.lat.toFixed(4)}, {card.location.lng.toFixed(4)}
-                  </div>
-                )}
+              {/* Place — pin glyph + label + open-in-maps. */}
+              <div className="border border-ink p-3 flex items-start gap-2.5">
+                <svg viewBox="0 0 24 24" width="18" height="18" className="shrink-0 mt-0.5 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+                  <path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11Z" strokeLinejoin="round" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+                <div className="min-w-0 flex-1 leading-snug">
+                  <div className="truncate">{card.location?.label || "—"}</div>
+                  {card.location && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${card.location.lat},${card.location.lng}`}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="mono text-[10px] tracking-widest opacity-70 hover:opacity-100 underline underline-offset-2 mt-1 inline-block"
+                    >
+                      OPEN IN MAPS ↗
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
             {card.location && (

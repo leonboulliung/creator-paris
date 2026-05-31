@@ -89,6 +89,12 @@ lib/
 
 ## 5. UI-Konventionen
 
+- **LEITPRINZIP — wenig Plattform-Text.** Wenn der von Menschen erstellte Inhalt
+  (Idee/Sache, Titel, Crew) das Kern-CTA ist, darf so gut wie kein anderer
+  Plattform-Text drumherum sein. Keine Labels/Untertitel/Counts, die nur erklären
+  was ohnehin sichtbar ist (z.B. „HAPPENING", „JOIN A CREW", „0◦ 1●", redundante
+  Uhr/Stadt). Icons statt Wörtern, wo ein Icon eindeutig ist (Uhr = Zeit, Pin =
+  Ort). Gilt für die ganze App.
 - **App-Shell**: `.app-shell = h-100dvh flex flex-col`, Header `shrink-0`, Main `flex-1 min-h-0 overflow-y-auto` (`no-scroll`-Variante für volle Map). iOS via `env(safe-area-inset-*)`.
 - **Map ist Primär.** Auf jedem Viewport ist die Paris-Karte die Haupt-Surface. Keine separate Feed-Seite mehr.
 - **FeedPanel ist permanent gedockt** (nie unsichtbar):

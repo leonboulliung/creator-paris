@@ -140,10 +140,10 @@ export default function HomePage() {
               onClick={() => setComposing("idea")}
               className="fixed right-4 sm:right-5 z-[1000] bg-ink text-paper w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 mono text-[12px] tracking-widest shadow-2xl hover:scale-[1.02] transition-transform duration-300 ease-out border border-paper/10 flex items-center justify-center gap-2"
               style={fabStyle}
-              aria-label="Throw an idea into the field"
+              aria-label="Create"
             >
               <span className="sm:hidden text-2xl leading-none">+</span>
-              <span className="hidden sm:inline">＋ THROW AN IDEA</span>
+              <span className="hidden sm:inline">＋ CREATE</span>
             </button>
           </SignedIn>
 
@@ -152,10 +152,10 @@ export default function HomePage() {
               <button
                 className="fixed right-4 sm:right-5 z-[1000] bg-ink text-paper w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 mono text-[12px] tracking-widest shadow-2xl hover:scale-[1.02] transition-transform duration-300 ease-out border border-paper/10 flex items-center justify-center gap-2"
                 style={fabStyle}
-                aria-label="Sign up to share an idea"
+                aria-label="Sign up to create"
               >
                 <span className="sm:hidden text-2xl leading-none">+</span>
-                <span className="hidden sm:inline">＋ THROW AN IDEA</span>
+                <span className="hidden sm:inline">＋ CREATE</span>
               </button>
             </SignUpButton>
           </SignedOut>
