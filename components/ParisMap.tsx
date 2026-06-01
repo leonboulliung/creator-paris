@@ -38,6 +38,13 @@ interface Props {
    * Set false for full-screen map views where the map IS the page.
    */
   gestureHandling?: boolean;
+  /**
+   * If set with a located card, the map centers on that card's pin at
+   * street-level zoom and releases the Paris max-bounds — so a pin near
+   * the edge of the metro area (Courbevoie, Vincennes, …) still sits
+   * centered. Intended for the detail-page mini-map.
+   */
+  focusedCard?: Card;
 }
 
 export function ParisMap({
@@ -52,6 +59,7 @@ export function ParisMap({
   highlightId,
   className = "",
   gestureHandling = true,
+  focusedCard,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -268,6 +276,21 @@ export function ParisMap({
       m.addTo(layerRef.current!);
     }
   }, [cards, ready, freshIds, highlightId]);
+
+  // Detail-page mini-map: center the view on the focused card's pin and
+  // drop max-bounds so a pin near the edge of the metro area still sits
+  // centered. Only runs when an explicit focusedCard with a location is
+  // passed in — leaves the home map untouched.
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    if (!focusedCard?.location) return;
+    mapRef.current.setMaxBounds(undefined as never);
+    mapRef.current.setView(
+      [focusedCard.location.lat, focusedCard.location.lng],
+      14,
+      { animate: false },
+    );
+  }, [ready, focusedCard]);
 
   // picked pin (compose mode)
   useEffect(() => {

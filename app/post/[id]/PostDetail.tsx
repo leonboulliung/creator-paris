@@ -226,26 +226,27 @@ export function PostDetail({ id }: { id: string }) {
           </div>
         </div>
       ) : (
-        // THING hero — the Paris-map fully tinted with the card's color.
-        // `isolate` is required so Leaflet's pane z-indexes stay contained;
-        // without it, the blend overlay sits below the tile pane (z=200) and
-        // has no effect. With multiply at full opacity the map is rendered
-        // entirely in the card's color, streets reading as darker tones.
-        // Title lives below the hero (in the content column).
+        // THING hero — the Paris-map tinted with the card's color.
+        // mix-blend-mode proved unreliable across the Safari+Leaflet stack
+        // (the tile pane's own stacking context swallows the blend), so the
+        // tint is a plain opacity-driven color overlay — guaranteed to
+        // render the same in every browser. Map stays subtly readable
+        // underneath; title lives below the hero (in the content column).
+        // ParisMap is auto-focused on the pin via `focusedCard`.
         <div
-          className="relative isolate h-[36vh] sm:h-[44vh] border-b border-rule overflow-hidden"
+          className="relative h-[36vh] sm:h-[44vh] border-b border-rule overflow-hidden"
           style={{ backgroundColor: color }}
         >
           {card.location && (
             <>
               <div className="absolute inset-0 pointer-events-none">
-                <ParisMap cards={[card]} highlightId={card.id} />
+                <ParisMap cards={[card]} highlightId={card.id} focusedCard={card} />
               </div>
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
                   backgroundColor: color,
-                  mixBlendMode: "multiply",
+                  opacity: 0.78,
                 }}
                 aria-hidden
               />
