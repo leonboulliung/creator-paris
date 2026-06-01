@@ -227,19 +227,16 @@ export function PostDetail({ id }: { id: string }) {
         </div>
       ) : (
         // THING hero — the Paris-map tinted with the card's color.
-        // mix-blend-mode proved unreliable across the Safari+Leaflet stack
-        // (the tile pane's own stacking context swallows the blend), so the
-        // tint is a plain opacity-driven color overlay — guaranteed to
-        // render the same in every browser. Map stays subtly readable
-        // underneath; title lives below the hero (in the content column).
-        // ParisMap is auto-focused on the pin via `focusedCard`.
-        <div
-          className="relative h-[36vh] sm:h-[44vh] border-b border-rule overflow-hidden"
-          style={{ backgroundColor: color }}
-        >
-          {card.location && (
+        // Substrate is paper, not the card color: otherwise the card color
+        // flashes solid for a moment before the tiles arrive. The map
+        // wrapper also carries a paper bg so the wrapper paints the same
+        // substrate the tiles will sit on, eliminating the flicker
+        // entirely. The color overlay runs at opacity 0.78 over the map.
+        // No-location fallback paints the card color as a solid block.
+        <div className="relative h-[36vh] sm:h-[44vh] border-b border-rule overflow-hidden bg-paper">
+          {card.location ? (
             <>
-              <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 pointer-events-none bg-paper">
                 <ParisMap cards={[card]} highlightId={card.id} focusedCard={card} />
               </div>
               <div
@@ -251,6 +248,12 @@ export function PostDetail({ id }: { id: string }) {
                 aria-hidden
               />
             </>
+          ) : (
+            <div
+              className="absolute inset-0"
+              style={{ backgroundColor: color }}
+              aria-hidden
+            />
           )}
         </div>
       )}
@@ -313,8 +316,8 @@ export function PostDetail({ id }: { id: string }) {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[14px]">
               {/* Time — clock glyph + the moment, nothing else. */}
-              <div className="panel p-4 flex items-start gap-2.5">
-                <svg viewBox="0 0 24 24" width="18" height="18" className="shrink-0 mt-0.5 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+              <div className="panel p-4 flex items-center justify-center gap-2.5 text-center">
+                <svg viewBox="0 0 24 24" width="18" height="18" className="shrink-0 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
                   <circle cx="12" cy="12" r="9" />
                   <path d="M12 7v5l3.5 2" strokeLinecap="round" />
                 </svg>
@@ -326,12 +329,12 @@ export function PostDetail({ id }: { id: string }) {
                 </div>
               </div>
               {/* Place — pin glyph + label + open-in-maps. */}
-              <div className="panel p-4 flex items-start gap-2.5">
-                <svg viewBox="0 0 24 24" width="18" height="18" className="shrink-0 mt-0.5 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+              <div className="panel p-4 flex items-center justify-center gap-2.5 text-center">
+                <svg viewBox="0 0 24 24" width="18" height="18" className="shrink-0 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
                   <path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11Z" strokeLinejoin="round" />
                   <circle cx="12" cy="10" r="2.5" />
                 </svg>
-                <div className="min-w-0 flex-1 leading-snug">
+                <div className="min-w-0 leading-snug">
                   <div className="truncate">{card.location?.label || "—"}</div>
                   {card.location && (
                     <a
