@@ -226,12 +226,37 @@ export function PostDetail({ id }: { id: string }) {
           </div>
         </div>
       ) : (
-        // THING hero — bold color block (concrete, joinable).
+        // THING hero — the card's color tints a live mini-Paris-map.
+        // Map is purely visual here (pointer-events disabled); the real map
+        // is the Home surface, and the place tile below opens external maps.
         <div
-          className="relative h-[42vh] sm:h-[52vh] border-b border-rule"
+          className="relative h-[52vh] sm:h-[60vh] border-b border-rule overflow-hidden"
           style={{ backgroundColor: color }}
         >
-          <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-8">
+          {card.location && (
+            <>
+              <div className="absolute inset-0 pointer-events-none">
+                <ParisMap cards={[card]} highlightId={card.id} />
+              </div>
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundColor: color,
+                  mixBlendMode: "multiply",
+                  opacity: dark ? 0.5 : 0.6,
+                }}
+                aria-hidden
+              />
+              <div
+                className="absolute inset-x-0 bottom-0 h-1/2 pointer-events-none"
+                style={{
+                  background: `linear-gradient(to top, ${color}, transparent)`,
+                }}
+                aria-hidden
+              />
+            </>
+          )}
+          <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-8 pointer-events-none">
             <div className={`flex items-center gap-2 ${dark ? "text-white" : "text-[#0d0d0d]"}`}>
               <span className={`mono text-[10px] tracking-widest px-2.5 py-1 rounded-full ${dark ? "bg-white/90 text-[#0d0d0d]" : "bg-[#0d0d0d]/90 text-white"}`}>
                 {headlineTag}
@@ -323,11 +348,6 @@ export function PostDetail({ id }: { id: string }) {
                 </div>
               </div>
             </div>
-            {card.location && (
-              <div className="rounded-2xl overflow-hidden border border-rule shadow-sm h-64">
-                <ParisMap cards={[card]} highlightId={card.id} />
-              </div>
-            )}
           </>
         )}
 
