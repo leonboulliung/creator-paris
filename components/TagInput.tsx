@@ -64,7 +64,7 @@ export function TagInput({
 
   return (
     <div className={className}>
-      <div className="border border-ink bg-white px-2 py-2 flex flex-wrap items-center gap-1.5 min-h-[44px]">
+      <div className="border border-rule-strong bg-white px-2 py-2 flex flex-wrap items-center gap-1.5 min-h-[44px]">
         {value.map((t) => (
           <span
             key={t}
@@ -109,7 +109,7 @@ export function TagInput({
               key={s}
               type="button"
               onClick={() => add(s)}
-              className="mono text-[10px] tracking-widest border border-ink/40 px-1.5 py-0.5 hover:bg-ink hover:text-paper transition"
+              className="mono text-[10px] tracking-widest border border-rule-strong/40 px-1.5 py-0.5 hover:bg-ink hover:text-paper transition"
             >
               + #{normalizeTag(s)}
             </button>

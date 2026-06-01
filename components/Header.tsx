@@ -40,13 +40,13 @@ export function Header({
   const showMobileSwitchRow = !pathname.startsWith("/post/");
 
   return (
-    <header className="shrink-0 z-50 bg-paper border-b border-ink safe-top">
+    <header className="shrink-0 z-50 bg-paper/85 backdrop-blur-md border-b border-rule safe-top">
       {/* Row 1 — logo · clock · auth */}
-      <div className="flex items-center px-3 sm:px-6 py-2 sm:py-3 gap-2 sm:gap-4">
+      <div className="flex items-center px-3 sm:px-6 py-2.5 sm:py-3 gap-2 sm:gap-4">
         <Link
           href="/"
           onClick={() => onLogoClick?.()}
-          className="flex items-center gap-3 shrink-0 min-w-0"
+          className="flex items-center gap-3 shrink-0 min-w-0 transition-opacity hover:opacity-70"
         >
           <span
             className="cp-pulse-dot"
@@ -71,17 +71,17 @@ export function Header({
           <SignedIn>
             <Link
               href={altDest}
-              className="ml-1 mono text-[10px] tracking-widest px-3 py-1.5 border border-ink hover:bg-ink hover:text-paper"
+              className="ml-1 mono text-[10px] tracking-widest px-3.5 py-1.5 rounded-full border border-rule-strong hover:bg-ink hover:text-paper hover:border-rule-strong transition-colors"
             >
               {altLabel}
             </Link>
-            <div className="ml-1 [&_.cl-userButtonAvatarBox]:!w-9 [&_.cl-userButtonAvatarBox]:!h-9 [&_.cl-userButtonAvatarBox]:!rounded-none [&_.cl-userButtonAvatarBox]:!border [&_.cl-userButtonAvatarBox]:!border-ink">
+            <div className="ml-1 [&_.cl-userButtonAvatarBox]:!w-9 [&_.cl-userButtonAvatarBox]:!h-9 [&_.cl-userButtonAvatarBox]:!rounded-full [&_.cl-userButtonAvatarBox]:!border [&_.cl-userButtonAvatarBox]:!border-rule-strong">
               <UserButton afterSignOutUrl="/" />
             </div>
           </SignedIn>
           <SignedOut>
             <SignInButton mode="modal">
-              <button className="ml-1 mono text-[10px] tracking-widest px-3 py-1.5 border border-ink hover:bg-ink hover:text-paper">
+              <button className="ml-1 mono text-[10px] tracking-widest px-3.5 py-1.5 rounded-full border border-rule-strong hover:bg-ink hover:text-paper hover:border-rule-strong transition-colors">
                 SIGN IN
               </button>
             </SignInButton>
@@ -95,18 +95,18 @@ export function Header({
             {showMobileSwitchRow && (
               <Link
                 href={altDest}
-                className="mono text-[10px] tracking-widest px-2.5 py-1.5 border border-ink hover:bg-ink hover:text-paper"
+                className="mono text-[10px] tracking-widest px-3 py-1.5 rounded-full border border-rule-strong hover:bg-ink hover:text-paper hover:border-rule-strong transition-colors"
               >
                 {altLabel}
               </Link>
             )}
-            <div className="[&_.cl-userButtonAvatarBox]:!w-8 [&_.cl-userButtonAvatarBox]:!h-8 [&_.cl-userButtonAvatarBox]:!rounded-none [&_.cl-userButtonAvatarBox]:!border [&_.cl-userButtonAvatarBox]:!border-ink">
+            <div className="[&_.cl-userButtonAvatarBox]:!w-8 [&_.cl-userButtonAvatarBox]:!h-8 [&_.cl-userButtonAvatarBox]:!rounded-full [&_.cl-userButtonAvatarBox]:!border [&_.cl-userButtonAvatarBox]:!border-rule-strong">
               <UserButton afterSignOutUrl="/" />
             </div>
           </SignedIn>
           <SignedOut>
             <SignInButton mode="modal">
-              <button className="mono text-[10px] tracking-widest px-2.5 py-1.5 border border-ink hover:bg-ink hover:text-paper">
+              <button className="mono text-[10px] tracking-widest px-3 py-1.5 rounded-full border border-rule-strong hover:bg-ink hover:text-paper hover:border-rule-strong transition-colors">
                 SIGN IN
               </button>
             </SignInButton>

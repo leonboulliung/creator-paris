@@ -199,7 +199,7 @@ export function PostDetail({ id }: { id: string }) {
       {/* ===================== HERO ===================== */}
       {isIdea ? (
         // IDEA hero — quiet paper, dashed frame, the idea mark. Latent, alive.
-        <div className="relative border-b border-ink cp-idea-frame">
+        <div className="relative border-b border-rule-strong cp-idea-frame">
           <div className="cp-idea-edge px-4 sm:px-8 py-8 sm:py-14 max-w-4xl mx-auto">
             <div className="mono text-[10px] tracking-widest flex items-center gap-2 opacity-80">
               <span className="cp-idea-mark" /> IDEA
@@ -228,16 +228,16 @@ export function PostDetail({ id }: { id: string }) {
       ) : (
         // THING hero — bold color block (concrete, joinable).
         <div
-          className="relative h-[42vh] sm:h-[52vh] border-b border-ink"
+          className="relative h-[42vh] sm:h-[52vh] border-b border-rule"
           style={{ backgroundColor: color }}
         >
           <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-8">
-            <div className={`flex items-center gap-2 ${dark ? "text-paper" : "text-ink"}`}>
-              <span className={`mono text-[10px] tracking-widest px-1.5 py-0.5 ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}>
+            <div className={`flex items-center gap-2 ${dark ? "text-white" : "text-[#0d0d0d]"}`}>
+              <span className={`mono text-[10px] tracking-widest px-2.5 py-1 rounded-full ${dark ? "bg-white/90 text-[#0d0d0d]" : "bg-[#0d0d0d]/90 text-white"}`}>
                 {headlineTag}
               </span>
             </div>
-            <h1 className={`editorial font-black text-[42px] sm:text-[88px] mt-3 max-w-[20ch] ${dark ? "text-paper" : "text-ink"}`}>
+            <h1 className={`editorial font-black text-[42px] sm:text-[88px] mt-3 max-w-[20ch] ${dark ? "text-white" : "text-[#0d0d0d]"}`}>
               {card.title}
             </h1>
           </div>
@@ -249,9 +249,9 @@ export function PostDetail({ id }: { id: string }) {
         <div className="flex items-center gap-3 mono text-[11px]">
           {card.owner.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={card.owner.avatarUrl} alt="" className="w-10 h-10 border border-ink object-cover" />
+            <img src={card.owner.avatarUrl} alt="" className="w-10 h-10 rounded-full border border-rule-strong object-cover" />
           ) : (
-            <div className="w-10 h-10 border border-ink bg-ink/10" aria-hidden />
+            <div className="w-10 h-10 rounded-full border border-rule-strong bg-ink/10" aria-hidden />
           )}
           <div>
             <Link href={`/u/${card.owner.id}`} className="hover:underline">@{card.owner.displayName}</Link>
@@ -272,7 +272,7 @@ export function PostDetail({ id }: { id: string }) {
         {card.tags && card.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {card.tags.map((t) => (
-              <span key={t} className="mono text-[10px] tracking-widest border border-ink px-2 py-1">
+              <span key={t} className="mono text-[10px] tracking-widest rounded-full border border-rule-strong text-ink-soft px-2.5 py-1">
                 #{t.toUpperCase()}
               </span>
             ))}
@@ -290,7 +290,7 @@ export function PostDetail({ id }: { id: string }) {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[14px]">
               {/* Time — clock glyph + the moment, nothing else. */}
-              <div className="border border-ink p-3 flex items-start gap-2.5">
+              <div className="panel p-4 flex items-start gap-2.5">
                 <svg viewBox="0 0 24 24" width="18" height="18" className="shrink-0 mt-0.5 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
                   <circle cx="12" cy="12" r="9" />
                   <path d="M12 7v5l3.5 2" strokeLinecap="round" />
@@ -303,7 +303,7 @@ export function PostDetail({ id }: { id: string }) {
                 </div>
               </div>
               {/* Place — pin glyph + label + open-in-maps. */}
-              <div className="border border-ink p-3 flex items-start gap-2.5">
+              <div className="panel p-4 flex items-start gap-2.5">
                 <svg viewBox="0 0 24 24" width="18" height="18" className="shrink-0 mt-0.5 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
                   <path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11Z" strokeLinejoin="round" />
                   <circle cx="12" cy="10" r="2.5" />
@@ -324,7 +324,7 @@ export function PostDetail({ id }: { id: string }) {
               </div>
             </div>
             {card.location && (
-              <div className="border border-ink h-64">
+              <div className="rounded-2xl overflow-hidden border border-rule shadow-sm h-64">
                 <ParisMap cards={[card]} highlightId={card.id} />
               </div>
             )}
@@ -333,7 +333,7 @@ export function PostDetail({ id }: { id: string }) {
 
         {/* IDEA-only: optional loose place line + mini-map if pinned */}
         {isIdea && card.location && (
-          <div className="border border-ink h-56">
+          <div className="rounded-2xl overflow-hidden border border-rule shadow-sm h-56">
             <ParisMap cards={[card]} highlightId={card.id} />
           </div>
         )}
@@ -343,7 +343,7 @@ export function PostDetail({ id }: { id: string }) {
             href={card.externalUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex items-center gap-2 mono text-[11px] tracking-widest border border-ink px-3 py-2 hover:bg-ink hover:text-paper transition self-start"
+            className="inline-flex items-center gap-2 mono text-[11px] tracking-widest rounded-full border border-rule-strong px-3.5 py-2 hover:bg-ink hover:text-paper transition-colors self-start"
           >
             ↗ {card.externalUrl.replace(/^https?:\/\//i, "").replace(/\/$/, "")}
           </a>
@@ -354,7 +354,7 @@ export function PostDetail({ id }: { id: string }) {
           <div className="space-y-4">
             {/* Non-owner: signal resonance. Sign-in happens at the tap. */}
             {!mine && (
-              <div className="cp-idea-frame border border-ink p-4">
+              <div className="cp-idea-frame border border-rule-strong rounded-2xl p-5">
                 <div className="mono text-[11px] tracking-widest opacity-70 mb-3">
                   WOULD YOU WANT THIS TO EXIST?
                 </div>
@@ -368,7 +368,7 @@ export function PostDetail({ id }: { id: string }) {
 
             {/* Owner: transform into a thing. */}
             {mine && !transforming && (
-              <div className="cp-idea-frame border border-ink p-4 flex items-center justify-between gap-3 flex-wrap">
+              <div className="cp-idea-frame border border-rule-strong rounded-2xl p-5 flex items-center justify-between gap-3 flex-wrap">
                 <div>
                   <div className="mono text-[11px] tracking-widest">READY TO MAKE IT REAL?</div>
                   <div className="mono text-[10px] opacity-60 mt-1">
@@ -450,8 +450,8 @@ export function PostDetail({ id }: { id: string }) {
 
         {/* ===================== SIGNALERS (idea) ===================== */}
         {isIdea && signalCount > 0 && (
-          <div className="border border-ink">
-            <div className="px-3 py-2 mono text-[10px] tracking-widest bg-ink text-paper flex justify-between">
+          <div className="border border-rule rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-2.5 mono text-[10px] tracking-widest bg-ink text-paper flex justify-between">
               <span>RESONATING · {signalCount}</span>
               {mine && <span className="opacity-70">YOUR FUTURE CREW</span>}
             </div>
@@ -471,8 +471,8 @@ export function PostDetail({ id }: { id: string }) {
 
         {/* ===================== THING: pending requests + crew ===================== */}
         {!isIdea && mine && card.requests.length > 0 && (
-          <div className="border border-ink">
-            <div className="px-3 py-2 mono text-[10px] tracking-widest bg-ink text-paper">
+          <div className="border border-rule rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-2.5 mono text-[10px] tracking-widest bg-ink text-paper">
               PENDING REQUESTS · {card.requests.length}
             </div>
             <ul>
@@ -480,8 +480,8 @@ export function PostDetail({ id }: { id: string }) {
                 <li key={r.userId} className="flex items-center justify-between px-3 py-2 border-t border-rule">
                   <div className="mono text-[12px]">@{r.user.displayName}</div>
                   <div className="flex gap-2">
-                    <button onClick={() => doAccept(r.userId)} className="mono text-[10px] tracking-widest px-3 py-1 border border-ink hover:bg-ink hover:text-paper">ACCEPT</button>
-                    <button onClick={() => doDecline(r.userId)} className="mono text-[10px] tracking-widest px-3 py-1 border border-ink hover:bg-ink hover:text-paper">DECLINE</button>
+                    <button onClick={() => doAccept(r.userId)} className="mono text-[10px] tracking-widest px-3 py-1 rounded-full border border-rule-strong hover:bg-ink hover:text-paper transition-colors">ACCEPT</button>
+                    <button onClick={() => doDecline(r.userId)} className="mono text-[10px] tracking-widest px-3 py-1 rounded-full border border-rule-strong hover:bg-ink hover:text-paper transition-colors">DECLINE</button>
                   </div>
                 </li>
               ))}
@@ -490,8 +490,8 @@ export function PostDetail({ id }: { id: string }) {
         )}
 
         {!isIdea && (
-          <div className="border border-ink">
-            <div className="px-3 py-2 mono text-[10px] tracking-widest bg-ink text-paper flex justify-between">
+          <div className="border border-rule rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-2.5 mono text-[10px] tracking-widest bg-ink text-paper flex justify-between">
               <span>CREW · {1 + card.joiners.length}</span>
               {mine && card.joiners.length > 0 && <span className="opacity-70">TAP A ROLE TO NAME IT</span>}
             </div>
@@ -509,7 +509,7 @@ export function PostDetail({ id }: { id: string }) {
                       maxLength={40}
                       onBlur={(ev) => { const v = ev.currentTarget.value; if (v !== j.role) doSetRole(j.userId, v); }}
                       onKeyDown={(ev) => { if (ev.key === "Enter") (ev.currentTarget as HTMLInputElement).blur(); }}
-                      className="mono text-[10px] tracking-widest uppercase px-2 py-1 border border-ink bg-paper w-[180px] focus:outline-none focus:bg-ink focus:text-paper"
+                      className="mono text-[10px] tracking-widest uppercase px-2.5 py-1 rounded-full border border-rule-strong bg-paper w-[180px] focus:outline-none focus:bg-ink focus:text-paper transition-colors"
                     />
                   ) : (
                     <span className="tag shrink-0">{j.role.toUpperCase() || "JOINER"}</span>
@@ -531,9 +531,9 @@ export function PostDetail({ id }: { id: string }) {
       </main>
 
       {editing && draft && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[1200] flex sm:items-center sm:justify-center sm:bg-ink/60 sm:p-6">
-          <div className="bg-paper flex flex-col w-full h-full sm:max-w-[700px] sm:max-h-[90vh] sm:h-auto sm:border sm:border-ink sm:shadow-2xl">
-          <div className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top">
+        <div className="fixed inset-0 z-[1200] flex sm:items-center sm:justify-center sm:bg-ink/50 sm:backdrop-blur-sm sm:p-6 animate-fadeIn">
+          <div className="bg-paper flex flex-col w-full h-full sm:max-w-[700px] sm:max-h-[90vh] sm:h-auto sm:rounded-2xl sm:border sm:border-rule sm:shadow-lg sm:overflow-hidden">
+          <div className="flex items-center justify-between border-b border-rule px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top">
             <div className="mono text-[10px] tracking-widest opacity-70">{isIdea ? "EDIT · IDEA" : "EDIT · THING"}</div>
             <button onClick={() => setEditing(false)} className="mono text-[11px] tracking-widest hover:underline">CLOSE ✕</button>
           </div>
@@ -554,15 +554,15 @@ export function PostDetail({ id }: { id: string }) {
                 </div>
                 <div>
                   <label className="mono text-[10px] tracking-widest opacity-70">PERMISSION</label>
-                  <div className="mt-1 flex">
-                    <button onClick={() => setDraft({ ...draft, permission: "public" })} className={`flex-1 px-3 py-2 border border-ink mono text-[10px] tracking-widest ${draft.permission === "public" ? "bg-ink text-paper" : "bg-paper"}`}>PUBLIC JOIN</button>
-                    <button onClick={() => setDraft({ ...draft, permission: "request" })} className={`flex-1 px-3 py-2 border border-ink border-l-0 mono text-[10px] tracking-widest ${draft.permission === "request" ? "bg-ink text-paper" : "bg-paper"}`}>REQUEST</button>
+                  <div className="mt-1 flex gap-2">
+                    <button onClick={() => setDraft({ ...draft, permission: "public" })} className={`flex-1 px-3 py-2 rounded-full border mono text-[10px] tracking-widest transition-colors ${draft.permission === "public" ? "bg-ink text-paper border-ink" : "bg-paper border-rule-strong"}`}>PUBLIC JOIN</button>
+                    <button onClick={() => setDraft({ ...draft, permission: "request" })} className={`flex-1 px-3 py-2 rounded-full border mono text-[10px] tracking-widest transition-colors ${draft.permission === "request" ? "bg-ink text-paper border-ink" : "bg-paper border-rule-strong"}`}>REQUEST</button>
                   </div>
                 </div>
               </>
             )}
           </div>
-          <div className="border-t border-ink px-4 sm:px-6 py-3 flex justify-end gap-2 shrink-0" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
+          <div className="border-t border-rule px-4 sm:px-6 py-3 flex justify-end gap-2 shrink-0" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
             <button onClick={() => setEditing(false)} className="btn ghost" disabled={busy}>Cancel</button>
             <button onClick={saveEdit} className="btn" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
           </div>

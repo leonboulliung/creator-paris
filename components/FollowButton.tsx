@@ -26,7 +26,7 @@ export function FollowButton({
   if (user?.id === targetId) return null;
 
   const cls =
-    "mono text-[10px] tracking-widest px-3 py-1.5 border border-ink transition";
+    "mono text-[10px] tracking-widest px-3.5 py-1.5 rounded-full border border-rule-strong transition-colors";
 
   if (!user) {
     return (

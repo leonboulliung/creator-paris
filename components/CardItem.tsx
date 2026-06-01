@@ -34,16 +34,16 @@ export function CardItem({
   return (
     <Link
       href={`/post/${card.id}`}
-      className={`block border-b border-ink group focus:outline-none ${isFresh ? "cp-fresh-row animate-fadeIn" : ""}`}
+      className={`block border-b border-rule group focus:outline-none transition-colors hover:bg-black/[0.025] ${isFresh ? "cp-fresh-row animate-fadeIn" : ""}`}
     >
       <div className="flex items-stretch gap-0">
         <div
-          className="relative w-24 sm:w-40 shrink-0"
+          className="relative w-24 sm:w-40 shrink-0 overflow-hidden transition-transform duration-300 group-hover:scale-[1.015]"
           style={{ backgroundColor: color }}
           aria-hidden
         >
           <div
-            className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-1.5 py-0.5 max-w-[calc(100%-16px)] truncate ${dark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+            className={`absolute left-2 top-2 mono text-[9px] tracking-widest px-2 py-0.5 rounded-full max-w-[calc(100%-16px)] truncate ${dark ? "bg-white/90 text-ink" : "bg-ink/90 text-paper"}`}
           >
             {headlineTag}
           </div>
@@ -55,7 +55,7 @@ export function CardItem({
             <span>·</span>
             <span className="truncate">{(card.location?.label || "PARIS").toUpperCase()}</span>
             {isFresh && (
-              <span className="shrink-0 mono text-[9px] tracking-widest px-1 py-0.5 bg-ink text-paper animate-twinkle">
+              <span className="shrink-0 mono text-[9px] tracking-widest px-1.5 py-0.5 rounded-full bg-ink text-paper animate-twinkle">
                 NEW ✦
               </span>
             )}
@@ -71,7 +71,7 @@ export function CardItem({
               {card.tags.slice(1, 4).map((t) => (
                 <span
                   key={t}
-                  className="mono text-[9px] tracking-widest px-1.5 py-0.5 border border-ink/40"
+                  className="mono text-[9px] tracking-widest px-2 py-0.5 rounded-full border border-rule-strong text-ink-soft"
                 >
                   #{t.toUpperCase()}
                 </span>

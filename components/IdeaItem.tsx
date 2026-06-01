@@ -31,7 +31,7 @@ export function IdeaItem({
 
   return (
     <div
-      className={`cp-idea-frame border-b border-ink ${isFresh ? "animate-rise" : ""}`}
+      className={`cp-idea-frame border-b border-rule transition-colors hover:bg-black/[0.02] ${isFresh ? "cp-rise" : ""}`}
     >
       <div className="cp-idea-edge flex items-stretch">
         <div className="flex-1 px-4 sm:px-6 py-4 sm:py-5 min-w-0">
@@ -46,7 +46,7 @@ export function IdeaItem({
               </>
             )}
             {isFresh && (
-              <span className="shrink-0 mono text-[9px] tracking-widest px-1 py-0.5 bg-[#c2452f] text-paper animate-twinkle">
+              <span className="shrink-0 mono text-[9px] tracking-widest px-1.5 py-0.5 rounded-full bg-ink text-paper animate-twinkle">
                 NEW ✦
               </span>
             )}
@@ -65,7 +65,7 @@ export function IdeaItem({
               {card.tags.slice(0, 4).map((t) => (
                 <span
                   key={t}
-                  className="mono text-[9px] tracking-widest px-1.5 py-0.5 border border-ink/30"
+                  className="mono text-[9px] tracking-widest px-2 py-0.5 rounded-full border border-rule-strong text-ink-soft"
                 >
                   #{t.toUpperCase()}
                 </span>
@@ -85,7 +85,7 @@ export function IdeaItem({
               {mine ? (
                 <Link
                   href={`/post/${card.id}`}
-                  className="mono text-[10px] tracking-widest px-3 py-2 border border-ink hover:bg-ink hover:text-paper transition inline-flex items-center"
+                  className="mono text-[10px] tracking-widest px-3.5 py-2 rounded-full border border-rule-strong hover:bg-ink hover:text-paper transition inline-flex items-center cp-ready"
                 >
                   MAKE IT REAL →
                 </Link>

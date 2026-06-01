@@ -166,9 +166,9 @@ export default function CarnetPage() {
       <Header />
       <main className="flex flex-col animate-fadeIn">
 
-      <div className="border-b border-ink px-4 sm:px-8 py-6 shrink-0">
+      <div className="border-b border-rule-strong px-4 sm:px-8 py-6 shrink-0">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 border border-ink overflow-hidden bg-white">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 border border-rule-strong overflow-hidden bg-white">
             {user.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={user.imageUrl} alt="" className="w-full h-full object-cover" />
@@ -179,7 +179,7 @@ export default function CarnetPage() {
               <span>PROFILE</span>
               <button
                 onClick={() => setEditingProfile(true)}
-                className="mono text-[10px] tracking-widest border border-ink px-2 py-0.5 hover:bg-ink hover:text-paper"
+                className="mono text-[10px] tracking-widest border border-rule-strong px-2 py-0.5 hover:bg-ink hover:text-paper"
               >
                 ✎ EDIT
               </button>
@@ -201,7 +201,7 @@ export default function CarnetPage() {
             {profile?.interests && profile.interests.length > 0 && (
               <div className="mono text-[10px] tracking-widest mt-2 opacity-70 flex flex-wrap gap-1">
                 {profile.interests.map((i) => (
-                  <span key={i} className="border border-ink px-1.5 py-0.5">
+                  <span key={i} className="border border-rule-strong px-1.5 py-0.5">
                     {i.toUpperCase()}
                   </span>
                 ))}
@@ -223,12 +223,12 @@ export default function CarnetPage() {
         </div>
       </div>
 
-      <div className="border-b border-ink px-4 sm:px-8 flex shrink-0">
+      <div className="border-b border-rule-strong px-4 sm:px-8 flex shrink-0">
         {(["track", "carnet"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`cp-lead-col px-4 py-3 mono text-[11px] tracking-widest border-r border-ink text-left ${tab === t ? "bg-ink text-paper" : "bg-paper text-ink"}`}
+            className={`cp-lead-col px-4 py-3 mono text-[11px] tracking-widest border-r border-rule-strong text-left ${tab === t ? "bg-ink text-paper" : "bg-paper text-ink"}`}
           >
             {t === "track" ? "TRACK RECORD" : t.toUpperCase()}
           </button>
@@ -314,7 +314,7 @@ export default function CarnetPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-6 sm:gap-10 items-start">
                   {/* LEFT — poster card */}
                   <div className="lg:sticky lg:top-4">
-                    <div className="border border-ink bg-paper p-5 sm:p-7">
+                    <div className="border border-rule-strong bg-paper p-5 sm:p-7">
                       <div className="flex items-baseline justify-between gap-3">
                         <div className="mono text-[10px] tracking-widest opacity-60">
                           CARNET · @{displayName.toUpperCase()}
@@ -349,7 +349,7 @@ export default function CarnetPage() {
                   <div>
                     {monthGroups.map((g) => (
                       <div key={g.key} className="mb-6 last:mb-0">
-                        <div className="flex items-baseline justify-between border-b border-ink pb-1.5 mono text-[10px] tracking-widest opacity-70">
+                        <div className="flex items-baseline justify-between border-b border-rule-strong pb-1.5 mono text-[10px] tracking-widest opacity-70">
                           <span>{g.label}</span>
                           <span>
                             {g.items.length} {g.items.length === 1 ? "ENTRY" : "ENTRIES"}
@@ -443,7 +443,7 @@ function TrackLine({
               }
             }}
             disabled={busy}
-            className="mono text-[10px] tracking-widest px-1.5 py-0.5 border border-ink opacity-0 group-hover:opacity-100 hover:bg-ink hover:text-paper transition"
+            className="mono text-[10px] tracking-widest px-1.5 py-0.5 border border-rule-strong opacity-0 group-hover:opacity-100 hover:bg-ink hover:text-paper transition"
             aria-label="Share as image"
           >
             {busy ? "…" : "↗"}
@@ -486,7 +486,7 @@ function TrackRow({
   const restCrew = allCrew.length - visibleCrew.length;
 
   return (
-    <div className="border-b border-ink flex items-stretch pl-4 sm:pl-8">
+    <div className="border-b border-rule-strong flex items-stretch pl-4 sm:pl-8">
       <div className="flex-1 flex items-stretch min-w-0">
         <Link
           href={`/post/${card.id}`}
@@ -507,7 +507,7 @@ function TrackRow({
             </div>
           ) : (
             <div
-              className={`absolute right-2 bottom-2 mono text-[9px] tracking-widest px-1.5 py-0.5 border border-dashed bg-transparent ${dark ? "text-paper/70 border-paper/50" : "text-ink/55 border-ink/40"}`}
+              className={`absolute right-2 bottom-2 mono text-[9px] tracking-widest px-1.5 py-0.5 border border-dashed bg-transparent ${dark ? "text-paper/70 border-paper/50" : "text-ink/55 border-rule-strong/40"}`}
             >
               ◌ ARCHIVED
             </div>
@@ -517,7 +517,7 @@ function TrackRow({
         <div className="flex-1 px-4 sm:px-6 py-4 sm:py-5 min-w-0">
           <div className="mono text-[10px] tracking-widest flex items-center gap-2 opacity-70 flex-wrap">
             <span
-              className={`px-1.5 py-0.5 border border-ink ${isCreator ? "bg-ink text-paper" : "bg-paper text-ink"}`}
+              className={`px-1.5 py-0.5 border border-rule-strong ${isCreator ? "bg-ink text-paper" : "bg-paper text-ink"}`}
             >
               {isCreator ? "CREATOR" : role.toUpperCase() || "JOINER"}
             </span>
@@ -558,7 +558,7 @@ function TrackRow({
                       key={m.id}
                       href={`/u/${m.id}`}
                       title={`@${m.displayName}${m.isCreator ? " · creator" : ""}`}
-                      className="block w-7 h-7 border border-ink bg-paper overflow-hidden hover:z-10 hover:scale-110 transition relative"
+                      className="block w-7 h-7 border border-rule-strong bg-paper overflow-hidden hover:z-10 hover:scale-110 transition relative"
                     >
                       {m.avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -575,7 +575,7 @@ function TrackRow({
                     </Link>
                   ))}
                   {restCrew > 0 && (
-                    <span className="block w-7 h-7 border border-ink bg-paper mono text-[9px] tracking-widest flex items-center justify-center">
+                    <span className="block w-7 h-7 border border-rule-strong bg-paper mono text-[9px] tracking-widest flex items-center justify-center">
                       +{restCrew}
                     </span>
                   )}
@@ -595,7 +595,7 @@ function TrackRow({
           }
         }}
         disabled={busy}
-        className="w-12 sm:w-20 border-l border-ink mono text-[10px] tracking-widest hover:bg-ink hover:text-paper"
+        className="w-12 sm:w-20 border-l border-rule-strong mono text-[10px] tracking-widest hover:bg-ink hover:text-paper"
         aria-label="Share as image"
       >
         {busy ? "…" : "↗"}

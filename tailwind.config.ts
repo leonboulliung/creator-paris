@@ -13,9 +13,23 @@ const config: Config = {
         mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular"],
       },
       colors: {
-        ink: "#0a0a0a",
-        paper: "#fafafa",
-        rule: "#e5e5e5",
+        ink: "#0d0d0d",
+        "ink-soft": "#4a4a48",
+        muted: "#8a8a85",
+        paper: "#f6f6f3",
+        surface: "#ffffff",
+        rule: "#e6e6e1",
+        "rule-strong": "#d4d4cd",
+      },
+      borderRadius: {
+        DEFAULT: "14px",
+        xl: "20px",
+        "2xl": "26px",
+      },
+      boxShadow: {
+        sm: "0 1px 2px rgba(13,13,13,0.04), 0 1px 3px rgba(13,13,13,0.06)",
+        md: "0 4px 12px -2px rgba(13,13,13,0.08), 0 2px 6px -2px rgba(13,13,13,0.06)",
+        lg: "0 18px 48px -12px rgba(13,13,13,0.20), 0 6px 16px -8px rgba(13,13,13,0.12)",
       },
       letterSpacing: {
         tightest: "-0.04em",

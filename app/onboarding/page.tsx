@@ -163,7 +163,7 @@ function OnboardingInner() {
 
   return (
     <div className="min-h-screen bg-paper flex flex-col">
-      <div className="border-b border-ink px-6 py-4 flex items-center justify-between safe-top">
+      <div className="border-b border-rule-strong px-6 py-4 flex items-center justify-between safe-top">
         <Link href="/" className="flex items-center gap-3">
           <span className="cp-pulse-dot" />
           <span className="font-black tracking-tightest text-[17px] leading-none">
@@ -191,8 +191,8 @@ function OnboardingInner() {
           <div className="mt-10 space-y-6">
             <div>
               <label className="mono text-[10px] tracking-widest opacity-70">USERNAME</label>
-              <div className="flex items-center mt-1 border border-ink">
-                <span className="mono text-[14px] px-3 py-3 border-r border-ink bg-ink text-paper">@</span>
+              <div className="flex items-center mt-1 border border-rule-strong">
+                <span className="mono text-[14px] px-3 py-3 border-r border-rule-strong bg-ink text-paper">@</span>
                 <input
                   autoFocus
                   value={username}
@@ -213,7 +213,7 @@ function OnboardingInner() {
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="w-28 h-28 border border-ink overflow-hidden bg-white relative group"
+                  className="w-28 h-28 border border-rule-strong overflow-hidden bg-white relative group"
                   aria-label="Upload profile picture"
                 >
                   {preview ? (
@@ -347,8 +347,8 @@ function SocialField({
   placeholder?: string;
 }) {
   return (
-    <div className="flex items-center border border-ink">
-      <span className="mono text-[11px] tracking-widest px-3 py-2.5 border-r border-ink bg-ink text-paper w-28">
+    <div className="flex items-center border border-rule-strong">
+      <span className="mono text-[11px] tracking-widest px-3 py-2.5 border-r border-rule-strong bg-ink text-paper w-28">
         {prefix} {label}
       </span>
       <input

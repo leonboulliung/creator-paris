@@ -361,7 +361,7 @@ export function CardCreate({
             className="input mt-1"
           />
           {suggestOpen && suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-full bg-paper border border-ink border-t-0 z-20 max-h-72 overflow-y-auto shadow-xl">
+            <div className="absolute left-0 right-0 top-full mt-1 bg-paper border border-rule rounded-xl z-20 max-h-72 overflow-y-auto shadow-lg">
               {/* dismiss bar */}
               <div className="sticky top-0 flex items-center justify-between bg-paper border-b border-rule px-3 py-1.5">
                 <span className="mono text-[9px] tracking-widest opacity-50">
@@ -485,7 +485,7 @@ export function CardCreate({
     !latlng && "LOCATION",
     spots === null && "PEOPLE",
   ].filter(Boolean) as string[];
-  const chipBase = "px-3 py-2 border border-ink mono text-[10px] tracking-widest";
+  const chipBase = "px-3.5 py-2 rounded-full border border-rule-strong mono text-[10px] tracking-widest transition-colors";
 
   // Top-bar carries optional "back to AI prompt" + CLOSE.
   const topBarRight = (
@@ -513,7 +513,7 @@ export function CardCreate({
         className={`mono text-[10px] tracking-widest px-2.5 py-1 border transition flex items-center gap-1.5 ${
           previewDark
             ? "border-paper/60 text-paper bg-ink/30 hover:bg-paper hover:text-ink"
-            : "border-ink/60 text-ink bg-paper/40 hover:bg-ink hover:text-paper"
+            : "border-rule-strong/60 text-ink bg-paper/40 hover:bg-ink hover:text-paper"
         }`}
         aria-label="Pick a color"
       >
@@ -521,7 +521,7 @@ export function CardCreate({
         COLOR
       </button>
       {colorOpen && (
-        <div className="absolute right-0 top-full mt-2 z-50 bg-paper border border-ink p-2 w-[208px] animate-fadeIn shadow-xl">
+        <div className="absolute right-0 top-full mt-2 z-50 bg-paper border border-rule rounded-xl p-2 w-[208px] animate-fadeIn shadow-lg">
           <div className="grid grid-cols-6 gap-1">
             {COLOR_PALETTE.map((c) => {
               const active = color === c.value;
@@ -532,7 +532,7 @@ export function CardCreate({
                   onClick={() => { setColor(c.value); setColorOpen(false); }}
                   title={c.label}
                   aria-label={c.label}
-                  className={`w-7 h-7 border ${active ? "border-ink ring-2 ring-ink ring-offset-1 ring-offset-paper" : "border-ink/20 hover:border-ink"}`}
+                  className={`w-7 h-7 border ${active ? "border-rule-strong ring-2 ring-ink ring-offset-1 ring-offset-paper" : "border-rule-strong/20 hover:border-rule-strong"}`}
                   style={{ backgroundColor: c.value }}
                 />
               );
@@ -544,7 +544,7 @@ export function CardCreate({
                 type="color"
                 value={color || "#0a0a0a"}
                 onChange={(e) => setColor(e.target.value)}
-                className="w-6 h-6 border border-ink p-0 cursor-pointer bg-paper"
+                className="w-6 h-6 rounded-lg border border-rule-strong p-0 cursor-pointer bg-paper"
               />
               CUSTOM
             </label>
@@ -590,7 +590,7 @@ export function CardCreate({
             gestureHandling={false}
           />
           <div
-            className="absolute left-3 z-[1100] mono text-[10px] tracking-widest bg-paper border border-ink px-2 py-1 max-w-[calc(100%-24px)] truncate"
+            className="absolute left-3 z-[1100] mono text-[10px] tracking-widest bg-paper/90 backdrop-blur border border-rule rounded-full px-3 py-1.5 shadow-sm max-w-[calc(100%-24px)] truncate"
             style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
           >
             {latlng
@@ -600,8 +600,8 @@ export function CardCreate({
         </div>
 
         {/* sidebar */}
-        <aside className="w-[420px] shrink-0 flex flex-col border-l border-ink bg-paper">
-          <div className="relative flex items-center justify-between border-b border-ink px-4 py-4 shrink-0">
+        <aside className="w-[420px] shrink-0 flex flex-col border-l border-rule-strong bg-paper">
+          <div className="relative flex items-center justify-between border-b border-rule-strong px-4 py-4 shrink-0">
             <div className="mono text-[10px] tracking-widest opacity-70">NEW · ONE THING</div>
             {topBarRight}
           </div>
@@ -613,7 +613,7 @@ export function CardCreate({
           >
             <div className="h-full flex flex-col justify-end p-4 pr-24">
               <div
-                className={`mono text-[10px] tracking-widest px-1.5 py-0.5 inline-block self-start ${previewDark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+                className={`mono text-[10px] tracking-widest px-2.5 py-1 rounded-full inline-block self-start ${previewDark ? "bg-white/90 text-ink" : "bg-ink/90 text-paper"}`}
               >
                 LIVE PREVIEW
               </div>
@@ -861,18 +861,18 @@ export function CardCreate({
             {/* PERMISSION */}
             <div>
               <label className="mono text-[10px] tracking-widest opacity-70">JOIN PERMISSION{inferredHint("permission")}</label>
-              <div className="mt-1 flex">
+              <div className="mt-1 flex gap-2">
                 <button
                   type="button"
                   onClick={() => { setPermission("public"); confirm("permission"); }}
-                  className={`flex-1 px-3 py-2 border border-ink mono text-[10px] tracking-widest ${permission === "public" ? "bg-ink text-paper" : "bg-paper"}`}
+                  className={`flex-1 px-3 py-2 rounded-full border mono text-[10px] tracking-widest transition-colors ${permission === "public" ? "bg-ink text-paper border-ink" : "bg-paper border-rule-strong hover:border-ink"}`}
                 >
                   PUBLIC JOIN
                 </button>
                 <button
                   type="button"
                   onClick={() => { setPermission("request"); confirm("permission"); }}
-                  className={`flex-1 px-3 py-2 border border-ink border-l-0 mono text-[10px] tracking-widest ${permission === "request" ? "bg-ink text-paper" : "bg-paper"}`}
+                  className={`flex-1 px-3 py-2 rounded-full border mono text-[10px] tracking-widest transition-colors ${permission === "request" ? "bg-ink text-paper border-ink" : "bg-paper border-rule-strong hover:border-ink"}`}
                 >
                   REQUEST TO JOIN
                 </button>
@@ -906,7 +906,7 @@ export function CardCreate({
 
           {/* action bar */}
           <div
-            className="border-t border-ink px-4 py-3 shrink-0"
+            className="border-t border-rule-strong px-4 py-3 shrink-0"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
           >
             {missing.length > 0 && (
@@ -932,9 +932,9 @@ export function CardCreate({
 
   return (
     <div className="h-full w-full flex sm:items-center sm:justify-center sm:bg-ink/60 sm:p-6">
-      <div className="bg-paper flex flex-col w-full h-full sm:max-w-[1100px] sm:max-h-[90vh] sm:h-auto sm:border sm:border-ink sm:shadow-2xl">
+      <div className="bg-paper flex flex-col w-full h-full sm:max-w-[1100px] sm:max-h-[90vh] sm:h-auto sm:rounded-2xl sm:border sm:border-rule sm:shadow-lg sm:overflow-hidden">
       <div
-        className="relative flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top"
+        className="relative flex items-center justify-between border-b border-rule-strong px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top"
       >
         <div className="mono text-[10px] tracking-widest opacity-70">NEW · ONE THING</div>
         {topBarRight}
@@ -948,7 +948,7 @@ export function CardCreate({
         >
           <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 pr-24 sm:pr-28">
             <div
-              className={`mono text-[10px] tracking-widest px-1.5 py-0.5 inline-block self-start ${previewDark ? "bg-paper text-ink" : "bg-ink text-paper"}`}
+              className={`mono text-[10px] tracking-widest px-2.5 py-1 rounded-full inline-block self-start ${previewDark ? "bg-white/90 text-ink" : "bg-ink/90 text-paper"}`}
             >
               LIVE PREVIEW
             </div>
@@ -1205,18 +1205,18 @@ export function CardCreate({
             {/* JOIN PERMISSION */}
             <div>
               <label className="mono text-[10px] tracking-widest opacity-70">JOIN PERMISSION{inferredHint("permission")}</label>
-              <div className="mt-1 flex">
+              <div className="mt-1 flex gap-2">
                 <button
                   type="button"
                   onClick={() => { setPermission("public"); confirm("permission"); }}
-                  className={`flex-1 px-3 py-2 border border-ink mono text-[10px] tracking-widest ${permission === "public" ? "bg-ink text-paper" : "bg-paper"}`}
+                  className={`flex-1 px-3 py-2 rounded-full border mono text-[10px] tracking-widest transition-colors ${permission === "public" ? "bg-ink text-paper border-ink" : "bg-paper border-rule-strong hover:border-ink"}`}
                 >
                   PUBLIC JOIN
                 </button>
                 <button
                   type="button"
                   onClick={() => { setPermission("request"); confirm("permission"); }}
-                  className={`flex-1 px-3 py-2 border border-ink border-l-0 mono text-[10px] tracking-widest ${permission === "request" ? "bg-ink text-paper" : "bg-paper"}`}
+                  className={`flex-1 px-3 py-2 rounded-full border mono text-[10px] tracking-widest transition-colors ${permission === "request" ? "bg-ink text-paper border-ink" : "bg-paper border-rule-strong hover:border-ink"}`}
                 >
                   REQUEST TO JOIN
                 </button>
@@ -1246,7 +1246,7 @@ export function CardCreate({
 
           <div className="flex flex-col gap-2">
             <label className="mono text-[10px] tracking-widest opacity-70">PIN ON MAP</label>
-            <div className="border border-ink h-[460px] sm:h-[520px]">
+            <div className="rounded-2xl overflow-hidden border border-rule shadow-sm h-[460px] sm:h-[520px]">
               <ParisMap
                 cards={[]}
                 selectable
@@ -1267,7 +1267,7 @@ export function CardCreate({
           </div>
         </div>
 
-        <div className="px-4 sm:px-6 py-3 border-t border-ink mono text-[11px] bg-ink text-paper">
+        <div className="px-4 sm:px-6 py-3 border-t border-rule-strong mono text-[11px] bg-ink text-paper">
           ONE LIVE CARD PER PERSON — POSTING AUTO-ARCHIVES YOUR CURRENT ONE (IF ANY) INTO YOUR CARNET.
         </div>
         {error && (
@@ -1278,7 +1278,7 @@ export function CardCreate({
       </div>
 
       <div
-        className="border-t border-ink px-4 sm:px-6 py-3 shrink-0"
+        className="border-t border-rule-strong px-4 sm:px-6 py-3 shrink-0"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
       >
         {missing.length > 0 && (

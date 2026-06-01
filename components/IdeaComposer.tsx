@@ -127,7 +127,7 @@ export function IdeaComposer({
 
   return (
     <div className="h-full w-full flex flex-col bg-paper cp-idea-frame">
-      <div className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top">
+      <div className="flex items-center justify-between border-b border-rule-strong px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top">
         <div className="mono text-[10px] tracking-widest opacity-70 flex items-center gap-2">
           <span className="cp-idea-mark" /> NEW IDEA
         </div>
@@ -169,7 +169,7 @@ export function IdeaComposer({
               placeholder="…we turned the empty print shop on rue Volta into a zine library."
               rows={3}
               maxLength={200}
-              className="w-full border border-ink bg-white px-4 py-3 editorial text-[20px] sm:text-[24px] leading-[1.25] focus:outline-none focus:ring-2 focus:ring-ink resize-none"
+              className="w-full border border-rule-strong bg-white px-4 py-3 editorial text-[20px] sm:text-[24px] leading-[1.25] focus:outline-none focus:ring-2 focus:ring-ink resize-none"
             />
             <div className="absolute bottom-2 right-3 mono text-[10px] opacity-50 tabular-nums">
               {text.length}/200
@@ -226,7 +226,7 @@ export function IdeaComposer({
                     className="input mt-1"
                   />
                   {suggestions.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full bg-paper border border-ink border-t-0 z-20 max-h-60 overflow-y-auto">
+                    <div className="absolute left-0 right-0 top-full bg-paper border border-rule-strong border-t-0 z-20 max-h-60 overflow-y-auto">
                       {suggestions.map((s, i) => (
                         <button
                           key={`${s.label}-${s.lat}-${s.lng}-${i}`}
@@ -264,7 +264,7 @@ export function IdeaComposer({
       </div>
 
       <div
-        className="border-t border-ink px-4 sm:px-8 py-3 shrink-0 flex items-center justify-between gap-3"
+        className="border-t border-rule-strong px-4 sm:px-8 py-3 shrink-0 flex items-center justify-between gap-3"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
       >
         <span className="mono text-[10px] opacity-50 hidden sm:inline">⌘ + ENTER to throw it in</span>

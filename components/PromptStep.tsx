@@ -63,7 +63,7 @@ export function PromptStep({ initialKind, onProceed, onClose }: Props) {
 
   return (
     <div className="h-full w-full flex flex-col bg-paper">
-      <div className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top">
+      <div className="flex items-center justify-between border-b border-rule-strong px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top">
         <div className="mono text-[10px] tracking-widest opacity-70">CREATE</div>
         <button onClick={onClose} className="mono text-[11px] tracking-widest hover:underline">
           CLOSE ✕
@@ -86,12 +86,12 @@ export function PromptStep({ initialKind, onProceed, onClose }: Props) {
             placeholder={isIdea ? "Wouldn't it be great if…" : "I want to…"}
             rows={4}
             maxLength={500}
-            className="w-full border border-ink bg-white px-4 py-3 editorial text-[22px] sm:text-[28px] leading-[1.2] focus:outline-none focus:ring-2 focus:ring-ink resize-none"
+            className="w-full border border-rule-strong bg-white px-4 py-3 editorial text-[22px] sm:text-[28px] leading-[1.2] focus:outline-none focus:ring-2 focus:ring-ink resize-none"
           />
 
           <div className="flex items-center gap-3">
             {/* IDEA / THING switch */}
-            <div className="flex border border-ink mono text-[11px] tracking-widest">
+            <div className="flex border border-rule-strong mono text-[11px] tracking-widest">
               <button
                 type="button"
                 onClick={() => setKind("idea")}
@@ -103,7 +103,7 @@ export function PromptStep({ initialKind, onProceed, onClose }: Props) {
               <button
                 type="button"
                 onClick={() => setKind("thing")}
-                className={`px-4 py-2.5 border-l border-ink ${!isIdea ? "bg-ink text-paper" : "bg-paper hover:bg-ink/[0.04]"}`}
+                className={`px-4 py-2.5 border-l border-rule-strong ${!isIdea ? "bg-ink text-paper" : "bg-paper hover:bg-ink/[0.04]"}`}
                 aria-pressed={!isIdea}
               >
                 THING

@@ -108,8 +108,8 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 z-[1200] flex sm:items-center sm:justify-center sm:bg-ink/60 sm:p-6">
-      <div className="bg-paper flex flex-col w-full h-full sm:max-w-[600px] sm:max-h-[90vh] sm:h-auto sm:border sm:border-ink sm:shadow-2xl">
-        <div className="flex items-center justify-between border-b border-ink px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top">
+      <div className="bg-paper flex flex-col w-full h-full sm:max-w-[600px] sm:max-h-[90vh] sm:h-auto sm:rounded-2xl sm:border sm:border-rule sm:shadow-lg sm:overflow-hidden">
+        <div className="flex items-center justify-between border-b border-rule-strong px-4 sm:px-6 py-3 sm:py-4 shrink-0 safe-top">
           <div className="mono text-[10px] tracking-widest opacity-70">EDIT · PROFILE</div>
           <button onClick={onClose} className="mono text-[11px] tracking-widest hover:underline">
             CLOSE ✕
@@ -119,8 +119,8 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-5">
           <div>
             <label className="mono text-[10px] tracking-widest opacity-70">USERNAME</label>
-            <div className="flex items-center mt-1 border border-ink">
-              <span className="mono text-[14px] px-3 py-3 border-r border-ink bg-ink text-paper">@</span>
+            <div className="flex items-center mt-1 border border-rule-strong">
+              <span className="mono text-[14px] px-3 py-3 border-r border-rule-strong bg-ink text-paper">@</span>
               <input
                 autoFocus
                 value={username}
@@ -194,7 +194,7 @@ export function ProfileEditor({ profile, onClose, onSaved }: Props) {
         </div>
 
         <div
-          className="border-t border-ink px-4 sm:px-6 py-3 flex justify-end gap-2 shrink-0"
+          className="border-t border-rule-strong px-4 sm:px-6 py-3 flex justify-end gap-2 shrink-0"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
         >
           <button onClick={onClose} className="btn ghost" disabled={saving}>
@@ -223,8 +223,8 @@ function Field({
   placeholder?: string;
 }) {
   return (
-    <div className="flex items-center border border-ink">
-      <span className="mono text-[11px] tracking-widest px-3 py-2.5 border-r border-ink bg-ink text-paper w-28">
+    <div className="flex items-center border border-rule-strong">
+      <span className="mono text-[11px] tracking-widest px-3 py-2.5 border-r border-rule-strong bg-ink text-paper w-28">
         {prefix} {label}
       </span>
       <input

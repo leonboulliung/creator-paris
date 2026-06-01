@@ -312,10 +312,10 @@ export function ParisMap({
             onSelectCard?.(preview.card.id);
             setPreview(null);
           }}
-          className="absolute z-[400] -translate-x-1/2 bg-paper border border-ink shadow-xl text-left animate-fadeIn"
+          className="absolute z-[400] -translate-x-1/2 bg-paper border border-rule-strong shadow-xl text-left animate-fadeIn"
           style={{ left: preview.x, top: preview.y + 14, width: 260 }}
         >
-          <div className="px-3 py-2 border-b border-ink mono text-[10px] tracking-widest flex justify-between">
+          <div className="px-3 py-2 border-b border-rule-strong mono text-[10px] tracking-widest flex justify-between">
             <span className="flex items-center gap-1.5">
               {preview.card.kind === "idea" && <span className="cp-idea-mark" />}
               {preview.card.location?.label.toUpperCase() ||

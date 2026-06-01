@@ -81,7 +81,7 @@ export function TransformPanel({
 
   const todayValue = useMemo(() => isoDate(parisNow()), []);
   const canSubmit = !!latlng && !!startsAt && spots !== null && !submitting;
-  const chipBase = "px-3 py-2 border border-ink mono text-[10px] tracking-widest";
+  const chipBase = "px-3 py-2 border border-rule-strong mono text-[10px] tracking-widest";
 
   const missing = [
     !latlng && "PLACE",
@@ -116,7 +116,7 @@ export function TransformPanel({
   }
 
   return (
-    <div className="border border-ink bg-paper animate-fadeIn">
+    <div className="border border-rule-strong bg-paper animate-fadeIn">
       <div className="px-4 py-3 bg-ink text-paper mono text-[11px] tracking-widest flex items-center justify-between">
         <span>MAKE IT REAL — IDEA → THING</span>
         <button onClick={onCancel} className="opacity-70 hover:opacity-100">✕</button>
@@ -148,7 +148,7 @@ export function TransformPanel({
               className="input mt-1"
             />
             {suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full bg-paper border border-ink border-t-0 z-20 max-h-60 overflow-y-auto">
+              <div className="absolute left-0 right-0 top-full bg-paper border border-rule-strong border-t-0 z-20 max-h-60 overflow-y-auto">
                 {suggestions.map((s, i) => (
                   <button
                     key={`${s.label}-${i}`}
@@ -254,14 +254,14 @@ export function TransformPanel({
             <button
               type="button"
               onClick={() => setPermission("public")}
-              className={`flex-1 px-3 py-2 border border-ink mono text-[10px] tracking-widest ${permission === "public" ? "bg-ink text-paper" : "bg-paper"}`}
+              className={`flex-1 px-3 py-2 border border-rule-strong mono text-[10px] tracking-widest ${permission === "public" ? "bg-ink text-paper" : "bg-paper"}`}
             >
               PUBLIC JOIN
             </button>
             <button
               type="button"
               onClick={() => setPermission("request")}
-              className={`flex-1 px-3 py-2 border border-ink border-l-0 mono text-[10px] tracking-widest ${permission === "request" ? "bg-ink text-paper" : "bg-paper"}`}
+              className={`flex-1 px-3 py-2 border border-rule-strong border-l-0 mono text-[10px] tracking-widest ${permission === "request" ? "bg-ink text-paper" : "bg-paper"}`}
             >
               REQUEST TO JOIN
             </button>
@@ -276,7 +276,7 @@ export function TransformPanel({
         {error && <p className="mono text-[11px] text-red-700">{error.toUpperCase()}</p>}
       </div>
 
-      <div className="border-t border-ink px-4 py-3">
+      <div className="border-t border-rule-strong px-4 py-3">
         {missing.length > 0 && (
           <p className="mono text-[10px] opacity-60 mb-2">STILL NEEDED · {missing.join(" · ")}</p>
         )}

@@ -153,7 +153,7 @@ export default function HomePage() {
           <SignedIn>
             <button
               onClick={() => setComposing("idea")}
-              className="fixed right-4 sm:right-5 z-[1000] bg-ink text-paper w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 mono text-[12px] tracking-widest shadow-2xl hover:scale-[1.02] transition-transform duration-300 ease-out border border-paper/10 flex items-center justify-center gap-2"
+              className="fixed right-4 sm:right-5 z-[1000] bg-ink text-paper w-14 h-14 sm:w-auto sm:h-auto sm:px-6 sm:py-3.5 rounded-full mono text-[12px] tracking-widest shadow-lg hover:shadow-xl hover:scale-[1.03] active:scale-100 transition-all duration-300 ease-out flex items-center justify-center gap-2"
               style={fabStyle}
               aria-label="Create"
             >
@@ -165,7 +165,7 @@ export default function HomePage() {
           <SignedOut>
             <SignUpButton mode="modal" forceRedirectUrl="/onboarding?next=/">
               <button
-                className="fixed right-4 sm:right-5 z-[1000] bg-ink text-paper w-14 h-14 sm:w-auto sm:h-auto sm:px-5 sm:py-3 mono text-[12px] tracking-widest shadow-2xl hover:scale-[1.02] transition-transform duration-300 ease-out border border-paper/10 flex items-center justify-center gap-2"
+                className="fixed right-4 sm:right-5 z-[1000] bg-ink text-paper w-14 h-14 sm:w-auto sm:h-auto sm:px-6 sm:py-3.5 rounded-full mono text-[12px] tracking-widest shadow-lg hover:shadow-xl hover:scale-[1.03] active:scale-100 transition-all duration-300 ease-out flex items-center justify-center gap-2"
                 style={fabStyle}
                 aria-label="Sign up to create"
               >

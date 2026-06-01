@@ -61,11 +61,11 @@ export function FeedPanel({
     );
 
   const sectionLabel = (text: string) => (
-    <div className="sticky top-0 z-10 bg-paper/95 backdrop-blur-sm border-b border-ink px-4 py-2.5 flex items-center justify-between gap-2">
+    <div className="sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-rule px-4 py-2.5 flex items-center justify-between gap-2">
       <span className="mono text-[10px] tracking-widest font-bold">{text}</span>
       <button
         onClick={() => onExpandedChange(false)}
-        className="shrink-0 mono text-[10px] tracking-widest px-2 py-1 border border-ink hover:bg-ink hover:text-paper transition"
+        className="shrink-0 mono text-[10px] tracking-widest px-2.5 py-1 rounded-full border border-rule-strong hover:bg-ink hover:text-paper transition-colors"
         aria-label="Collapse field"
       >
         {collapseLabel}
@@ -76,10 +76,10 @@ export function FeedPanel({
   const emptyField = (
     <div className="flex-1 overflow-y-auto bg-paper">
       {/* Even empty, keep the collapse reachable. */}
-      <div className="sticky top-0 z-10 bg-paper/95 backdrop-blur-sm border-b border-ink px-4 py-2.5 flex items-center justify-end">
+      <div className="sticky top-0 z-10 bg-paper/90 backdrop-blur-md border-b border-rule px-4 py-2.5 flex items-center justify-end">
         <button
           onClick={() => onExpandedChange(false)}
-          className="mono text-[10px] tracking-widest px-2 py-1 border border-ink hover:bg-ink hover:text-paper transition"
+          className="mono text-[10px] tracking-widest px-2.5 py-1 rounded-full border border-rule-strong hover:bg-ink hover:text-paper transition-colors"
           aria-label="Collapse field"
         >
           {collapseLabel}
@@ -148,8 +148,8 @@ export function FeedPanel({
   if (isDesktop) {
     return (
       <aside
-        className={`absolute top-0 right-0 bottom-0 z-[600] flex flex-col bg-paper border-l border-ink shadow-[0_0_40px_rgba(0,0,0,0.08)] transition-[width] duration-300 ease-out overflow-hidden ${
-          expanded ? "w-[380px]" : "w-[52px]"
+        className={`absolute top-3 right-3 bottom-3 z-[600] flex flex-col bg-paper/95 backdrop-blur-md border border-rule rounded-2xl shadow-lg transition-[width] duration-300 ease-out overflow-hidden ${
+          expanded ? "w-[380px]" : "w-[56px]"
         }`}
         aria-label="The field"
       >
@@ -186,14 +186,14 @@ export function FeedPanel({
         />
       )}
       <div
-        className="absolute inset-x-0 bottom-0 z-[600] flex flex-col bg-paper border-t border-ink shadow-[0_-8px_30px_rgba(0,0,0,0.18)] transition-[height] duration-300 ease-out overflow-hidden"
+        className="absolute inset-x-0 bottom-0 z-[600] flex flex-col bg-paper/95 backdrop-blur-md border-t border-rule rounded-t-2xl shadow-lg transition-[height] duration-300 ease-out overflow-hidden"
         style={{ height: expanded ? "80dvh" : "52px", maxHeight: "calc(100dvh - 80px)" }}
         aria-label="The field"
       >
         {expanded ? (
           <>
-            <div className="flex justify-center pt-2 pb-1 shrink-0">
-              <div className="h-1 w-10 bg-ink/30 rounded-full" />
+            <div className="flex justify-center pt-2.5 pb-1 shrink-0">
+              <div className="h-1 w-9 bg-ink/20 rounded-full" />
             </div>
             {body}
           </>
@@ -203,7 +203,7 @@ export function FeedPanel({
             className="w-full h-full px-4 flex items-center justify-between gap-2 relative"
             aria-label="Open the field"
           >
-            <div className="absolute left-1/2 top-1.5 -translate-x-1/2 h-1 w-10 bg-ink/30 rounded-full" />
+            <div className="absolute left-1/2 top-1.5 -translate-x-1/2 h-1 w-9 bg-ink/20 rounded-full" />
             <span className="mono text-[10px] tracking-widest">THE FIELD</span>
             <span className="mono text-[10px] tracking-widest">
               {total > 0 ? `${total} ↑` : "↑"}
