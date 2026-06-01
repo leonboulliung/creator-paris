@@ -9,6 +9,7 @@ import type { Card } from "@/lib/types";
 import { parisTimeOfDay } from "@/lib/time";
 import { TOD_LABEL, type TimeOfDay } from "@/lib/vibe";
 import { cardColor } from "@/lib/color";
+import { useIsDesktop } from "@/lib/hooks";
 
 // Module-scope flag — the plugin only needs registering once per page.
 let gestureHandlerRegistered = false;
@@ -69,10 +70,17 @@ export function ParisMap({
   const LRef = useRef<typeof L | null>(null);
   const pickHandlerRef = useRef<((ll: { lat: number; lng: number }) => void) | null>(null);
   const [ready, setReady] = useState(false);
-  const [preview, setPreview] = useState<{ card: Card; x: number; y: number } | null>(null);
+  // Preview state holds only the card; the screen position is derived from
+  // the map's current projection on every render, so the panel stays glued
+  // to the pin as the user pans or zooms.
+  const [preview, setPreview] = useState<{ card: Card } | null>(null);
+  // Bumped on every map move/zoom event so the preview re-renders with a
+  // fresh container-point for its pin. Only subscribed while preview is open.
+  const [previewTick, setPreviewTick] = useState(0);
   const [tod, setTod] = useState<TimeOfDay>(() =>
     typeof window === "undefined" ? "midday" : parisTimeOfDay(),
   );
+  const isDesktop = useIsDesktop();
 
   // Re-check the real Paris sun-derived time-of-day every minute so the map
   // drifts through dawn → midday → golden → night with actual sun position.
@@ -259,13 +267,14 @@ export function ParisMap({
         offset: [10, 0],
         opacity: 1,
         className: "cp-pin-tooltip",
+        // On touch there is no hover, so the title-strip stays visible
+        // permanently next to each pin. Desktop keeps the hover behavior.
+        permanent: !isDesktop,
       });
       m.on("click", (e: L.LeafletMouseEvent) => {
-        // Hide the hover tooltip — the click preview takes over.
+        // Hide the title strip — the click preview takes over.
         m.closeTooltip();
-        if (!ref.current || !mapRef.current) return;
-        const pt = mapRef.current.latLngToContainerPoint([c.location!.lat, c.location!.lng]);
-        setPreview({ card: c, x: pt.x, y: pt.y });
+        setPreview({ card: c });
         L.DomEvent.stopPropagation(e);
       });
       // Whenever the user mouses off and back on, the tooltip can come back —
@@ -275,7 +284,23 @@ export function ParisMap({
       });
       m.addTo(layerRef.current!);
     }
-  }, [cards, ready, freshIds, highlightId]);
+  }, [cards, ready, freshIds, highlightId, isDesktop]);
+
+  // While the click-preview is open, re-project on every map move/zoom so
+  // the panel stays anchored to its pin. We only subscribe when preview is
+  // active to avoid bumping React on every pan when there's nothing to
+  // re-position.
+  useEffect(() => {
+    if (!preview || !mapRef.current) return;
+    const map = mapRef.current;
+    const tick = () => setPreviewTick((n) => n + 1);
+    map.on("move", tick);
+    map.on("zoom", tick);
+    return () => {
+      map.off("move", tick);
+      map.off("zoom", tick);
+    };
+  }, [preview]);
 
   // Detail-page mini-map: center the view on the focused card's pin and
   // drop max-bounds so a pin near the edge of the metro area still sits
@@ -329,39 +354,48 @@ export function ParisMap({
       style={{ height, width: "100%" }}
     >
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
-      {preview && (
-        <button
-          onClick={() => {
-            onSelectCard?.(preview.card.id);
-            setPreview(null);
-          }}
-          className="absolute z-[400] -translate-x-1/2 bg-paper border border-rule-strong shadow-xl text-left animate-fadeIn"
-          style={{ left: preview.x, top: preview.y + 14, width: 260 }}
-        >
-          <div className="px-3 py-2 border-b border-rule-strong mono text-[10px] tracking-widest flex justify-between">
-            <span className="flex items-center gap-1.5">
-              {preview.card.kind === "idea" && <span className="cp-idea-mark" />}
-              {preview.card.location?.label.toUpperCase() ||
-                (preview.card.kind === "idea" ? "IDEA" : "PARIS")}
-            </span>
-            <span className="opacity-70">
-              {preview.card.expiresAt
-                ? new Date(preview.card.expiresAt).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" }).toUpperCase()
-                : preview.card.kind === "idea" ? "OPEN" : ""}
-            </span>
-          </div>
-          <div className="px-3 py-2">
-            <div className="font-black editorial text-[20px] leading-[0.95] line-clamp-3">
-              {preview.card.title}
+      {(() => {
+        if (!preview || !mapRef.current || !preview.card.location) return null;
+        // previewTick is read so React re-runs this projection on every pan.
+        void previewTick;
+        const pt = mapRef.current.latLngToContainerPoint([
+          preview.card.location.lat,
+          preview.card.location.lng,
+        ]);
+        return (
+          <button
+            onClick={() => {
+              onSelectCard?.(preview.card.id);
+              setPreview(null);
+            }}
+            className="absolute z-[400] -translate-x-1/2 bg-paper border border-rule-strong shadow-xl text-left animate-fadeIn"
+            style={{ left: pt.x, top: pt.y + 14, width: 260 }}
+          >
+            <div className="px-3 py-2 border-b border-rule-strong mono text-[10px] tracking-widest flex justify-between">
+              <span className="flex items-center gap-1.5">
+                {preview.card.kind === "idea" && <span className="cp-idea-mark" />}
+                {preview.card.location?.label.toUpperCase() ||
+                  (preview.card.kind === "idea" ? "IDEA" : "PARIS")}
+              </span>
+              <span className="opacity-70">
+                {preview.card.expiresAt
+                  ? new Date(preview.card.expiresAt).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" }).toUpperCase()
+                  : preview.card.kind === "idea" ? "OPEN" : ""}
+              </span>
             </div>
-            <div className="mono text-[10px] mt-2 opacity-70">
-              {preview.card.kind === "idea"
-                ? `${preview.card.signals.length} RESONATING · TAP TO OPEN →`
-                : `${preview.card.joiners.length}/${preview.card.spots ?? "—"} PEOPLE · TAP TO OPEN →`}
+            <div className="px-3 py-2">
+              <div className="font-black editorial text-[20px] leading-[0.95] line-clamp-3">
+                {preview.card.title}
+              </div>
+              <div className="mono text-[10px] mt-2 opacity-70">
+                {preview.card.kind === "idea"
+                  ? `${preview.card.signals.length} RESONATING · TAP TO OPEN →`
+                  : `${preview.card.joiners.length}/${preview.card.spots ?? "—"} PEOPLE · TAP TO OPEN →`}
+              </div>
             </div>
-          </div>
-        </button>
-      )}
+          </button>
+        );
+      })()}
     </div>
   );
 }
